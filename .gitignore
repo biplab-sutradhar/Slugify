@@ -1,0 +1,63 @@
+ # Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+yarn.lock
+
+# Next.js build output
+.next/
+out/
+
+# TypeScript
+*.tsbuildinfo
+
+# TailwindCSS
+tailwind.config.js
+
+# Environment Files
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Go
+# Binaries
+bin/
+*.exe
+*.test
+*.out
+*.so
+*.a
+*.o
+*.dll
+*.dylib
+*.deb
+
+# Go modules
+/go.sum
+/go.mod
+
+# Go workspace
+go.work
+
+# Go build cache
+*.cache
+
+# Logs
+*.log
+
+# IDEs & Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-workspace
+*.sublime-project
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
