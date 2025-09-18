@@ -1,34 +1,36 @@
 package services
 
 import (
+	"database/sql"
 	"fmt"
-	"github.com/biplab-sutradhar/slugify/api/internal/models"
-	"sync"
 	"time"
+
+	"github.com/biplab-sutradhar/slugify/api/internal/db"
+	"github.com/biplab-sutradhar/slugify/api/internal/models"
+	"github.com/google/uuid"
 )
 
-var (
-	links   sync.Map // thread-safe map
-	counter = 0
-)
+// Global DB variable (set in main.go)
+var DB *sql.DB
 
-func SaveLink(longURL string) models.Link {
-	counter++
-	shortCode := fmt.Sprintf("%d", counter)
-
+// SaveLink inserts a new link into the database.
+func SaveLink(longURL string) (models.Link, error) {
+	// Generate a unique ID and short code
 	link := models.Link{
-		ShortCode: shortCode,
+		ID:        uuid.New().String(),
+		ShortCode: fmt.Sprintf("%d", time.Now().UnixNano()), // temporary short code
 		LongURL:   longURL,
 		CreatedAt: time.Now(),
 	}
-	links.Store(shortCode, link)
-	return link
+
+	// Save to DB
+	if err := db.CreateLink(DB, link); err != nil {
+		return models.Link{}, err
+	}
+	return link, nil
 }
 
-func GetLink(shortCode string) (models.Link, bool) {
-	value, exists := links.Load(shortCode)
-	if exists {
-		return value.(models.Link), true
-	}
-	return models.Link{}, false
+// GetLink fetches a link by short code from the database.
+func GetLink(shortCode string) (models.Link, error) {
+	return db.GetLinkByShortCode(DB, shortCode)
 }

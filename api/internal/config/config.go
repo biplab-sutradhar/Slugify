@@ -7,8 +7,9 @@ import (
 )
 
 type Config struct {
-	Port    string
-	AppName string
+	Port        string
+	AppName     string
+	DatabaseURL string
 }
 
 func LoadConfig() Config {
@@ -27,8 +28,14 @@ func LoadConfig() Config {
 		appName = "url-shortener"
 	}
 
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		log.Fatal("DATABASE_URL is not set in environment variables")
+	}
+
 	return Config{
-		Port:    port,
-		AppName: appName,
+		Port:        port,
+		AppName:     appName,
+		DatabaseURL: dbURL,
 	}
 }

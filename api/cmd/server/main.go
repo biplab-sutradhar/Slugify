@@ -1,27 +1,33 @@
 package main
 
 import (
-	"fmt"
+	"log"
+
 	"github.com/biplab-sutradhar/slugify/api/internal/config"
+	"github.com/biplab-sutradhar/slugify/api/internal/db"
 	"github.com/biplab-sutradhar/slugify/api/internal/handlers"
+	"github.com/biplab-sutradhar/slugify/api/internal/services"
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
 	cfg := config.LoadConfig()
 
-	router := gin.Default()
+	// connect DB
+	database, err := db.NewDB(cfg.DatabaseURL)
+	if err != nil {
+		log.Fatalf("DB connection failed: %v", err)
+	}
+	defer database.Close()
 
-	router.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"status": "ok",
-			"app":    cfg.AppName,
-		})
-	})
+	// set global DB
+	services.DB = database
 
-	router.POST("/api/shorten", handlers.ShortenLink)
-	router.GET("/:shortCode", handlers.ResolveLink)
-	addr := ":" + cfg.Port
-	fmt.Printf("Starting server on %s...\n", addr)
-	router.Run(addr)
+	// setup router
+	r := gin.Default()
+	r.POST("/api/shorten", handlers.ShortenLink)
+	r.GET("/:shortCode", handlers.ResolveLink)
+
+	log.Printf("Server running on :%s", cfg.Port)
+	r.Run(":" + cfg.Port)
 }
