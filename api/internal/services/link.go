@@ -3,27 +3,32 @@ package services
 import (
 	"fmt"
 	"github.com/biplab-sutradhar/slugify/api/internal/models"
+	"sync"
 	"time"
 )
 
 var (
-	links   = make(map[string]models.Link)
+	links   sync.Map // thread-safe map
 	counter = 0
 )
 
 func SaveLink(longURL string) models.Link {
 	counter++
 	shortCode := fmt.Sprintf("%d", counter)
+
 	link := models.Link{
 		ShortCode: shortCode,
 		LongURL:   longURL,
 		CreatedAt: time.Now(),
 	}
-	links[shortCode] = link
+	links.Store(shortCode, link)
 	return link
 }
 
 func GetLink(shortCode string) (models.Link, bool) {
-	link, exists := links[shortCode]
-	return link, exists
+	value, exists := links.Load(shortCode)
+	if exists {
+		return value.(models.Link), true
+	}
+	return models.Link{}, false
 }
