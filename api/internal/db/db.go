@@ -3,23 +3,20 @@ package db
 import (
 	"database/sql"
 	"fmt"
-
-	_ "github.com/jackc/pgx/v5/stdlib" // import pgx driver
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 // NewDB connects to the PostgreSQL database using a connection string
 func NewDB(connString string) (*sql.DB, error) {
 	db, err := sql.Open("pgx", connString)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open DB: %w", err)
+		return nil, err
 	}
 
-	// Optionally: set some connection pool parameters
-
+	//connection pool parameters
 	// db.SetMaxOpenConns(25)
 	// db.SetMaxIdleConns(5)
 	// db.SetConnMaxLifetime(time.Hour)
-
 	if err := db.Ping(); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("db.Ping: %w", err)

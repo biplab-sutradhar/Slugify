@@ -18,22 +18,24 @@ func main() {
 	}
 	defer database.Close()
 
+	repo := db.NewPostgresLinkRepository(database)
+
 	// Create sample link
 	newLink := models.Link{
 		ID:        uuid.New().String(),
-		ShortCode: "abc12",
+		ShortCode: "abc124",
 		LongURL:   "https://example.com",
 		CreatedAt: time.Now(),
 	}
 
 	// Insert into DB
-	if err := db.CreateLink(database, newLink); err != nil {
+	if err := repo.CreateLink(newLink); err != nil {
 		log.Fatalf("Insert failed: %v", err)
 	}
 	fmt.Println("✅ Inserted link:", newLink.ShortCode)
 
 	// Fetch from DB
-	fetched, err := db.GetLinkByShortCode(database, "abc123")
+	fetched, err := repo.GetLinkByShortCode("abc123")
 	if err != nil {
 		log.Fatalf("Fetch failed: %v", err)
 	}
