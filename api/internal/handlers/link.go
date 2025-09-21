@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"database/sql"
+	"github.com/biplab-sutradhar/slugify/api/internal/config"
 	"github.com/biplab-sutradhar/slugify/api/internal/models"
 	"github.com/biplab-sutradhar/slugify/api/internal/services"
 	"github.com/gin-gonic/gin"
@@ -9,6 +10,7 @@ import (
 )
 
 func ShortenLink(service *services.LinkService) gin.HandlerFunc {
+	cfg := config.LoadConfig()
 	return func(c *gin.Context) {
 		var req models.ShortenRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -23,7 +25,7 @@ func ShortenLink(service *services.LinkService) gin.HandlerFunc {
 		}
 
 		resp := models.ShortenResponse{
-			ShortURL: "http://localhost:8080/" + link.ShortCode,
+			ShortURL: cfg.DomainURL + link.ShortCode,
 		}
 		c.JSON(http.StatusCreated, resp)
 	}

@@ -11,6 +11,7 @@ type Config struct {
 	AppName     string
 	DatabaseURL string
 	RedisURL    string
+	DomainURL   string
 }
 
 func LoadConfig() Config {
@@ -38,10 +39,17 @@ func LoadConfig() Config {
 	if redisUrl == "" {
 		log.Fatal("REDIS_URL is not set in environment variables")
 	}
+
+	domainURL := os.Getenv("DOMAINURL")
+	if domainURL == "" {
+		log.Fatal("DOMAINURL is not set in environment variables")
+	}
+
 	return Config{
 		Port:        port,
 		AppName:     appName,
 		DatabaseURL: dbURL,
 		RedisURL:    redisUrl,
+		DomainURL:   domainURL,
 	}
 }
