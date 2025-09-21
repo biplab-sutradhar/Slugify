@@ -2,7 +2,9 @@ package main
 
 import (
 	"log"
+	"time"
 
+	"github.com/biplab-sutradhar/slugify/api/internal/cache"
 	"github.com/biplab-sutradhar/slugify/api/internal/config"
 	"github.com/biplab-sutradhar/slugify/api/internal/db"
 	"github.com/biplab-sutradhar/slugify/api/internal/handlers"
@@ -12,34 +14,52 @@ import (
 )
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
+	// Load environment variables from .env file
+	if err := godotenv.Load(); err != nil {
 		log.Printf("Warning: Could not load .env file: %v", err)
 	}
 
+	// Load configuration
 	cfg := config.LoadConfig()
 
+	// Initialize database connection
 	database, err := db.NewDB(cfg.DatabaseURL)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
-
 	defer database.Close()
 
-	// initialize repo and service
-	repo := db.NewPostgresLinkRepository(database)
-	service := services.NewLinkService(repo)
+	// Initialize Redis connection
+	redisClient, err := cache.NewRedisClient(cfg.RedisURL)
+	if err != nil {
+		log.Fatalf("Failed to connect to Redis: %v", err)
+	}
+	defer redisClient.Close()
 
+	// Initialize repository and service
+	repo := db.NewPostgresLinkRepository(database)
+	service := services.NewLinkService(repo, redisClient)
+
+	// Set up Gin router
 	r := gin.Default()
 
+	// Middleware to log request duration
+	r.Use(func(c *gin.Context) {
+		start := time.Now()
+		c.Next()
+		duration := time.Since(start)
+		log.Printf("Request %s %s took %v", c.Request.Method, c.Request.URL.Path, duration)
+	})
+
+	// Register endpoints
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
 	r.POST("/api/shorten", handlers.ShortenLink(service))
 	r.GET("/:shortCode", handlers.ResolveLink(service))
 
+	// Start server
 	if err := r.Run(":" + cfg.Port); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
-
 }

@@ -31,9 +31,7 @@ func (r *PostgresLinkRepository) GetLinkByShortCode(shortCode string) (models.Li
 		WHERE short_code = $1
 	`
 	err := r.db.QueryRow(query, shortCode).Scan(&link.ID, &link.ShortCode, &link.LongURL, &link.CreatedAt)
-	if err == sql.ErrNoRows {
-		return models.Link{}, err
-	}
+
 	if err != nil {
 		return models.Link{}, err
 	}
