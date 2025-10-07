@@ -3,38 +3,42 @@ package services
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/biplab-sutradhar/slugify/api/internal/cache"
 	"github.com/biplab-sutradhar/slugify/api/internal/db"
 	"github.com/biplab-sutradhar/slugify/api/internal/idgen"
 	"github.com/biplab-sutradhar/slugify/api/internal/models"
 	"github.com/google/uuid"
-	"time"
 )
 
 // LinkService handles business logic for links.
 type LinkService struct {
-	repo  db.LinkRepository
-	cache cache.Cache
+	repo         db.LinkRepository
+	cache        cache.Cache
+	ticketServer idgen.TicketServer
 }
 
 // NewLinkService creates a new service instance.
-func NewLinkService(repo db.LinkRepository, cache cache.Cache) *LinkService {
-	return &LinkService{repo: repo, cache: cache}
+func NewLinkService(repo db.LinkRepository, cache cache.Cache, ticketServer idgen.TicketServer) *LinkService {
+	return &LinkService{repo: repo, cache: cache, ticketServer: ticketServer}
 }
 
-// SaveLink creates a new link with a generated short code and saves it to the repository.
+// SaveLink creates a new link with a generated short code and caches it.
 func (s *LinkService) SaveLink(longURL string) (models.Link, error) {
-	// Basic validation (non-empty URL)
+	// Basic validation
 	if longURL == "" {
 		return models.Link{}, fmt.Errorf("long_url cannot be empty")
 	}
 
 	// Generate short code
-	shortCode, err := idgen.GenerateShortCode()
+	ctx := context.Background()
+	shortCode, err := s.ticketServer.GenerateID(ctx)
 	if err != nil {
-		return models.Link{}, fmt.Errorf("failed to generate short code: %w", err)
+		return models.Link{}, fmt.Errorf("failed to generate short code: %v", err)
 	}
-	// Create the link object
+
+	// Create link
 	link := models.Link{
 		ID:        uuid.New().String(),
 		ShortCode: shortCode,
@@ -42,22 +46,20 @@ func (s *LinkService) SaveLink(longURL string) (models.Link, error) {
 		CreatedAt: time.Now(),
 	}
 
-	// Save the link to the database
+	// Save to database
 	if err := s.repo.CreateLink(link); err != nil {
-		return models.Link{}, fmt.Errorf("failed to save link: %w", err)
+		return models.Link{}, err
 	}
 
 	// Cache the URL (write-through)
-	ctx := context.Background()
 	if err := s.cache.SetURL(ctx, link.ShortCode, link.LongURL); err != nil {
-		// Log cache error but continue (graceful degradation)
+		// Log cache error but continue
 		fmt.Printf("Warning: Failed to cache URL: %v\n", err)
 	}
 
 	return link, nil
 }
 
-// GetLink retrieves a link by its short code.
 // GetLink retrieves a link by its short code, checking cache first.
 func (s *LinkService) GetLink(shortCode string) (models.Link, error) {
 	ctx := context.Background()
@@ -82,8 +84,9 @@ func (s *LinkService) GetLink(shortCode string) (models.Link, error) {
 		return models.Link{}, err
 	}
 
-	// set Cache
+	// Cache the result
 	if err := s.cache.SetURL(ctx, link.ShortCode, link.LongURL); err != nil {
+		// Log cache error but continue
 		fmt.Printf("Warning: Failed to cache URL: %v\n", err)
 	}
 

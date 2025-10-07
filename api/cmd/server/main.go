@@ -8,13 +8,13 @@ import (
 	"github.com/biplab-sutradhar/slugify/api/internal/config"
 	"github.com/biplab-sutradhar/slugify/api/internal/db"
 	"github.com/biplab-sutradhar/slugify/api/internal/handlers"
+	"github.com/biplab-sutradhar/slugify/api/internal/idgen"
 	"github.com/biplab-sutradhar/slugify/api/internal/services"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
 
 func main() {
-	// Load environment variables from .env file
 	if err := godotenv.Load(); err != nil {
 		log.Printf("Warning: Could not load .env file: %v", err)
 	}
@@ -26,6 +26,8 @@ func main() {
 	database, err := db.NewDB(cfg.DatabaseURL)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
+	} else {
+		log.Println("Connected to Postgres")
 	}
 	defer database.Close()
 
@@ -33,12 +35,20 @@ func main() {
 	redisClient, err := cache.NewRedisClient(cfg.RedisURL)
 	if err != nil {
 		log.Fatalf("Failed to connect to Redis: %v", err)
+	} else {
+		log.Println("Connected to Redis")
 	}
 	defer redisClient.Close()
 
+	// Initialize Ticket server connection
+	ticketServer, err := idgen.NewTicketServer(database)
+	if err != nil {
+		log.Fatalf("Failed to connect to ticketServer: %v", err)
+	}
+
 	// Initialize repository and service
 	repo := db.NewPostgresLinkRepository(database)
-	service := services.NewLinkService(repo, redisClient)
+	service := services.NewLinkService(repo, redisClient, ticketServer)
 
 	// Set up Gin router
 	r := gin.Default()
