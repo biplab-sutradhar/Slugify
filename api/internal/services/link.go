@@ -17,11 +17,12 @@ type LinkService struct {
 	repo         db.LinkRepository
 	cache        cache.Cache
 	ticketServer idgen.TicketServer
+	apiKeyRepo   db.APIKeyRepository
 }
 
 // NewLinkService creates a new service instance.
-func NewLinkService(repo db.LinkRepository, cache cache.Cache, ticketServer idgen.TicketServer) *LinkService {
-	return &LinkService{repo: repo, cache: cache, ticketServer: ticketServer}
+func NewLinkService(repo db.LinkRepository, cache cache.Cache, ticketServer idgen.TicketServer, apiKeyRepo db.APIKeyRepository) *LinkService {
+	return &LinkService{repo: repo, cache: cache, ticketServer: ticketServer, apiKeyRepo: apiKeyRepo}
 }
 
 // SaveLink creates a new link with a generated short code and caches it.
@@ -58,6 +59,10 @@ func (s *LinkService) SaveLink(longURL string) (models.Link, error) {
 	}
 
 	return link, nil
+}
+
+func (s *LinkService) IncrementAPIKeyUsage(ctx context.Context, apiKeyID string) error {
+	return s.apiKeyRepo.IncrementUsage(ctx, apiKeyID)
 }
 
 // GetLink retrieves a link by its short code, checking cache first.

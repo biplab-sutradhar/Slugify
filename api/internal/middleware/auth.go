@@ -2,10 +2,9 @@ package middleware
 
 import (
 	"net/http"
-	// "strings"
 
+	"github.com/biplab-sutradhar/slugify/api/internal/auth"
 	"github.com/biplab-sutradhar/slugify/api/internal/db"
-	// "github.com/biplab-sutradhar/slugify/api/internal/services"
 	"github.com/gin-gonic/gin"
 )
 

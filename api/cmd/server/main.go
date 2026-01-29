@@ -11,6 +11,9 @@ import (
 	"github.com/biplab-sutradhar/slugify/api/internal/idgen"
 	"github.com/biplab-sutradhar/slugify/api/internal/services"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/joho/godotenv"
 )
 
@@ -21,6 +24,20 @@ func main() {
 
 	// Load configuration
 	cfg := config.LoadConfig()
+
+	// Database migrations (run before connecting to DB)
+	m, err := migrate.New(
+		"file://migrations",
+		cfg.DatabaseURL,
+	)
+	if err != nil {
+		log.Fatalf("Failed to create migrator: %v", err)
+	}
+
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+		log.Fatalf("Migration failed: %v", err)
+	}
+	log.Println("Migrations applied successfully")
 
 	// Initialize database connection
 	database, err := db.NewDB(cfg.DatabaseURL)
@@ -44,11 +61,14 @@ func main() {
 	ticketServer, err := idgen.NewTicketServer(database)
 	if err != nil {
 		log.Fatalf("Failed to connect to ticketServer: %v", err)
+	} else {
+		log.Println("Connected to ticketServer")
 	}
 
 	// Initialize repository and service
 	repo := db.NewPostgresLinkRepository(database)
-	service := services.NewLinkService(repo, redisClient, ticketServer)
+	apiKeyRepo := db.NewPostgresAPIKeyRepository(database)
+	service := services.NewLinkService(repo, redisClient, ticketServer, apiKeyRepo)
 
 	// Set up Gin router
 	r := gin.Default()
