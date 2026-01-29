@@ -124,10 +124,11 @@ func (ts *PostgresTicketServer) GenerateID(ctx context.Context) (string, error) 
 	}
 
 	newID++
+	// FIXED: Changed $1 to $2 for the WHERE clause
 	_, err = tx.ExecContext(ctx, `
 		UPDATE ranges
 		SET current_id = $1
-		WHERE range_id = $1
+		WHERE range_id = $2
 	`, newID, selectedRange.RangeID)
 	if err != nil {
 		return "", fmt.Errorf("failed to update current_id: %v", err)
