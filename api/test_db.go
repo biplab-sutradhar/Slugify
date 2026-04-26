@@ -1,3 +1,5 @@
+//go:build ignore
+
 package main
 
 import (
@@ -20,24 +22,22 @@ func main() {
 
 	repo := db.NewPostgresLinkRepository(database)
 
-	// Create sample link
+	shortCode := "abc123"
 	newLink := models.Link{
 		ID:        uuid.New().String(),
-		ShortCode: "abc124",
-		LongURL:   "https://example.com",
+		ShortCode: shortCode,
+		LongURL:   "<https://example.com>",
 		CreatedAt: time.Now(),
 	}
 
-	// Insert into DB
 	if err := repo.CreateLink(newLink); err != nil {
 		log.Fatalf("Insert failed: %v", err)
 	}
-	fmt.Println("✅ Inserted link:", newLink.ShortCode)
+	fmt.Println("Inserted link:", newLink.ShortCode)
 
-	// Fetch from DB
-	fetched, err := repo.GetLinkByShortCode("abc123")
+	fetched, err := repo.GetLinkByShortCode(shortCode)
 	if err != nil {
 		log.Fatalf("Fetch failed: %v", err)
 	}
-	fmt.Println("🔎 Retrieved link:", fetched.LongURL)
+	fmt.Println("Retrieved link:", fetched.LongURL)
 }
