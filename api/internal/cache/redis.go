@@ -53,3 +53,7 @@ func (r *RedisClient) SetURL(ctx context.Context, shortCode, longURL string) err
 	err := r.client.Set(ctx, "url:"+shortCode, longURL, 24*time.Hour).Err()
 	return err
 }
+
+func (r *RedisClient) GetRawClient() *redis.Client {
+	return r.client
+}

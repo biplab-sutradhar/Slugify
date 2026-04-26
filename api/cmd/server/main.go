@@ -9,6 +9,7 @@ import (
 	"github.com/biplab-sutradhar/slugify/api/internal/db"
 	"github.com/biplab-sutradhar/slugify/api/internal/handlers"
 	"github.com/biplab-sutradhar/slugify/api/internal/idgen"
+	"github.com/biplab-sutradhar/slugify/api/internal/middleware"
 	"github.com/biplab-sutradhar/slugify/api/internal/services"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-migrate/migrate/v4"
@@ -22,10 +23,8 @@ func main() {
 		log.Printf("Warning: Could not load .env file: %v", err)
 	}
 
-	// Load configuration
 	cfg := config.LoadConfig()
 
-	// Database migrations (run before connecting to DB)
 	m, err := migrate.New(
 		"file://migrations",
 		cfg.DatabaseURL,
@@ -39,7 +38,6 @@ func main() {
 	}
 	log.Println("Migrations applied successfully")
 
-	// Initialize database connection
 	database, err := db.NewDB(cfg.DatabaseURL)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
@@ -48,7 +46,6 @@ func main() {
 	}
 	defer database.Close()
 
-	// Initialize Redis connection
 	redisClient, err := cache.NewRedisClient(cfg.RedisURL)
 	if err != nil {
 		log.Fatalf("Failed to connect to Redis: %v", err)
@@ -57,7 +54,6 @@ func main() {
 	}
 	defer redisClient.Close()
 
-	// Initialize Ticket server connection
 	ticketServer, err := idgen.NewTicketServer(database)
 	if err != nil {
 		log.Fatalf("Failed to connect to ticketServer: %v", err)
@@ -65,15 +61,13 @@ func main() {
 		log.Println("Connected to ticketServer")
 	}
 
-	// Initialize repository and service
 	repo := db.NewPostgresLinkRepository(database)
 	apiKeyRepo := db.NewPostgresAPIKeyRepository(database)
-	service := services.NewLinkService(repo, redisClient, ticketServer, apiKeyRepo)
+	linkService := services.NewLinkService(repo, redisClient, ticketServer, apiKeyRepo, cfg.DomainURL)
+	apiKeyService := services.NewAPIKeyService(apiKeyRepo)
 
-	// Set up Gin router
 	r := gin.Default()
 
-	// Middleware to log request duration
 	r.Use(func(c *gin.Context) {
 		start := time.Now()
 		c.Next()
@@ -81,14 +75,29 @@ func main() {
 		log.Printf("Request %s %s took %v", c.Request.Method, c.Request.URL.Path, duration)
 	})
 
-	// Register endpoints
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
-	r.POST("/api/shorten", handlers.ShortenLink(service))
-	r.GET("/:shortCode", handlers.ResolveLink(service))
 
-	// Start server
+	// Public redirect route (no auth needed)
+	r.GET("/:shortCode", handlers.ResolveLink(linkService))
+
+	// Public API routes (no auth needed)
+	publicAPI := r.Group("/api")
+	{
+		publicAPI.POST("/keys", handlers.CreateAPIKey(apiKeyService))
+	}
+
+	// Protected API routes
+	api := r.Group("/api")
+	api.Use(middleware.AuthMiddleware(apiKeyRepo))
+	api.Use(middleware.RateLimitMiddleware(redisClient.GetRawClient()))
+	{
+		api.POST("/shorten", handlers.ShortenLink(linkService))
+		api.GET("/keys", handlers.ListAPIKeys(apiKeyService))
+		api.DELETE("/keys/:id", handlers.DeleteAPIKey(apiKeyService))
+	}
+
 	if err := r.Run(":" + cfg.Port); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}

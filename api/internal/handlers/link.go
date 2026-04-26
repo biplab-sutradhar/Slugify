@@ -10,7 +10,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// ShortenLink handles POST /api/shorten requests (requires API key).
 func ShortenLink(service *services.LinkService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req models.ShortenRequest
@@ -19,7 +18,6 @@ func ShortenLink(service *services.LinkService) gin.HandlerFunc {
 			return
 		}
 
-		// Increment usage for API key
 		apiKeyID := c.GetString("api_key_id")
 		if apiKeyID != "" {
 			if err := service.IncrementAPIKeyUsage(c, apiKeyID); err != nil {
@@ -35,13 +33,12 @@ func ShortenLink(service *services.LinkService) gin.HandlerFunc {
 		}
 
 		resp := models.ShortenResponse{
-			ShortURL: "http://localhost:8080/" + link.ShortCode,
+			ShortURL: service.GetDomainURL() + "/" + link.ShortCode,
 		}
 		c.JSON(http.StatusCreated, resp)
 	}
 }
 
-// ResolveLink handles GET /{shortCode} requests (requires API key).
 func ResolveLink(service *services.LinkService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		shortCode := c.Param("shortCode")
@@ -55,12 +52,10 @@ func ResolveLink(service *services.LinkService) gin.HandlerFunc {
 			return
 		}
 
-		// Increment usage for API key
 		apiKeyID := c.GetString("api_key_id")
 		if apiKeyID != "" {
 			if err := service.IncrementAPIKeyUsage(c, apiKeyID); err != nil {
-				// Log but continue with redirect
-				fmt.Printf("Warning: Failed to update usage: %v\n", err)
+				fmt.Printf("Warning: Failed to update usage: %v\\n", err)
 			}
 		}
 

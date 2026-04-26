@@ -12,34 +12,33 @@ import (
 	"github.com/google/uuid"
 )
 
-// LinkService handles business logic for links.
 type LinkService struct {
 	repo         db.LinkRepository
 	cache        cache.Cache
 	ticketServer idgen.TicketServer
 	apiKeyRepo   db.APIKeyRepository
+	domainURL    string
 }
 
-// NewLinkService creates a new service instance.
-func NewLinkService(repo db.LinkRepository, cache cache.Cache, ticketServer idgen.TicketServer, apiKeyRepo db.APIKeyRepository) *LinkService {
-	return &LinkService{repo: repo, cache: cache, ticketServer: ticketServer, apiKeyRepo: apiKeyRepo}
+func NewLinkService(repo db.LinkRepository, cache cache.Cache, ticketServer idgen.TicketServer, apiKeyRepo db.APIKeyRepository, domainURL string) *LinkService {
+	return &LinkService{repo: repo, cache: cache, ticketServer: ticketServer, apiKeyRepo: apiKeyRepo, domainURL: domainURL}
 }
 
-// SaveLink creates a new link with a generated short code and caches it.
+func (s *LinkService) GetDomainURL() string {
+	return s.domainURL
+}
+
 func (s *LinkService) SaveLink(longURL string) (models.Link, error) {
-	// Basic validation
 	if longURL == "" {
 		return models.Link{}, fmt.Errorf("long_url cannot be empty")
 	}
 
-	// Generate short code
 	ctx := context.Background()
 	shortCode, err := s.ticketServer.GenerateID(ctx)
 	if err != nil {
 		return models.Link{}, fmt.Errorf("failed to generate short code: %v", err)
 	}
 
-	// Create link
 	link := models.Link{
 		ID:        uuid.New().String(),
 		ShortCode: shortCode,
@@ -47,15 +46,12 @@ func (s *LinkService) SaveLink(longURL string) (models.Link, error) {
 		CreatedAt: time.Now(),
 	}
 
-	// Save to database
 	if err := s.repo.CreateLink(link); err != nil {
 		return models.Link{}, err
 	}
 
-	// Cache the URL (write-through)
 	if err := s.cache.SetURL(ctx, link.ShortCode, link.LongURL); err != nil {
-		// Log cache error but continue
-		fmt.Printf("Warning: Failed to cache URL: %v\n", err)
+		fmt.Printf("Warning: Failed to cache URL: %v\\n", err)
 	}
 
 	return link, nil
@@ -65,34 +61,27 @@ func (s *LinkService) IncrementAPIKeyUsage(ctx context.Context, apiKeyID string)
 	return s.apiKeyRepo.IncrementUsage(ctx, apiKeyID)
 }
 
-// GetLink retrieves a link by its short code, checking cache first.
 func (s *LinkService) GetLink(shortCode string) (models.Link, error) {
 	ctx := context.Background()
 
-	// Check cache
 	longURL, err := s.cache.GetURL(ctx, shortCode)
 	if err != nil {
-		// Log cache error but continue
-		fmt.Printf("Warning: Cache error: %v\n", err)
+		fmt.Printf("Warning: Cache error: %v\\n", err)
 	}
 	if longURL != "" {
-		// Cache hit: return a minimal Link struct
 		return models.Link{
 			ShortCode: shortCode,
 			LongURL:   longURL,
 		}, nil
 	}
 
-	// Cache miss: query database
 	link, err := s.repo.GetLinkByShortCode(shortCode)
 	if err != nil {
 		return models.Link{}, err
 	}
 
-	// Cache the result
 	if err := s.cache.SetURL(ctx, link.ShortCode, link.LongURL); err != nil {
-		// Log cache error but continue
-		fmt.Printf("Warning: Failed to cache URL: %v\n", err)
+		fmt.Printf("Warning: Failed to cache URL: %v\\n", err)
 	}
 
 	return link, nil
