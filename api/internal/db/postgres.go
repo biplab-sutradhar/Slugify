@@ -21,10 +21,10 @@ func NewPostgresLinkRepository(db *sql.DB) *PostgresLinkRepository {
 // CreateLink inserts a link into the database.
 func (r *PostgresLinkRepository) CreateLink(link models.Link) error {
 	query := `
-		INSERT INTO links (id, short_code, long_url, created_at)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO links (id, short_code, long_url, is_active, created_at)
+		VALUES ($1, $2, $3, $4, $5)
 	`
-	_, err := r.db.Exec(query, link.ID, link.ShortCode, link.LongURL, link.CreatedAt)
+	_, err := r.db.Exec(query, link.ID, link.ShortCode, link.LongURL, link.IsActive, link.CreatedAt)
 	return err
 }
 
@@ -32,11 +32,11 @@ func (r *PostgresLinkRepository) CreateLink(link models.Link) error {
 func (r *PostgresLinkRepository) GetLinkByShortCode(shortCode string) (models.Link, error) {
 	var link models.Link
 	query := `
-		SELECT id, short_code, long_url, created_at
+		SELECT id, short_code, long_url, is_active, created_at
 		FROM links
 		WHERE short_code = $1
 	`
-	err := r.db.QueryRow(query, shortCode).Scan(&link.ID, &link.ShortCode, &link.LongURL, &link.CreatedAt)
+	err := r.db.QueryRow(query, shortCode).Scan(&link.ID, &link.ShortCode, &link.LongURL, &link.IsActive, &link.CreatedAt)
 	if err == sql.ErrNoRows {
 		return models.Link{}, err
 	}
@@ -233,5 +233,53 @@ func (r *PostgresAPIKeyRepository) IncrementUsage(ctx context.Context, apiKeyID 
 		SET usage = usage + 1
 		WHERE id = $1
 	`, apiKeyID)
+	return err
+}
+
+func (r *PostgresLinkRepository) GetLinkByID(id string) (models.Link, error) {
+	var link models.Link
+	query := `
+		SELECT id, short_code, long_url, is_active, created_at
+		FROM links
+		WHERE id = $1
+	`
+	err := r.db.QueryRow(query, id).Scan(&link.ID, &link.ShortCode, &link.LongURL, &link.IsActive, &link.CreatedAt)
+	if err != nil {
+		return models.Link{}, err
+	}
+	return link, nil
+}
+
+func (r *PostgresLinkRepository) ListLinks(limit, offset int) ([]models.Link, error) {
+	query := `
+		SELECT id, short_code, long_url, is_active, created_at
+		FROM links
+		ORDER BY created_at DESC
+		LIMIT $1 OFFSET $2
+	`
+	rows, err := r.db.Query(query, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var links []models.Link
+	for rows.Next() {
+		var link models.Link
+		if err := rows.Scan(&link.ID, &link.ShortCode, &link.LongURL, &link.IsActive, &link.CreatedAt); err != nil {
+			return nil, err
+		}
+		links = append(links, link)
+	}
+	return links, rows.Err()
+}
+
+func (r *PostgresLinkRepository) UpdateLinkStatus(id string, isActive bool) error {
+	_, err := r.db.Exec("UPDATE links SET is_active = $1 WHERE id = $2", isActive, id)
+	return err
+}
+
+func (r *PostgresLinkRepository) DeleteLink(id string) error {
+	_, err := r.db.Exec("DELETE FROM links WHERE id = $1", id)
 	return err
 }

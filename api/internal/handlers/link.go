@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/biplab-sutradhar/slugify/api/internal/models"
 	"github.com/biplab-sutradhar/slugify/api/internal/services"
@@ -60,5 +61,79 @@ func ResolveLink(service *services.LinkService) gin.HandlerFunc {
 		}
 
 		c.Redirect(http.StatusFound, link.LongURL)
+	}
+}
+
+func GetLink(service *services.LinkService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		link, err := service.GetLinkByID(id)
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Link not found"})
+			return
+		}
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, link)
+	}
+}
+
+func ListLinks(service *services.LinkService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		limit := 20
+		offset := 0
+
+		if l := c.Query("limit"); l != "" {
+			if parsed, err := strconv.Atoi(l); err == nil {
+				limit = parsed
+			}
+		}
+		if o := c.Query("offset"); o != "" {
+			if parsed, err := strconv.Atoi(o); err == nil {
+				offset = parsed
+			}
+		}
+
+		links, err := service.ListLinks(limit, offset)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, links)
+	}
+}
+
+func UpdateLink(service *services.LinkService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		var req models.UpdateLinkRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON"})
+			return
+		}
+
+		if req.IsActive == nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "is_active is required"})
+			return
+		}
+
+		if err := service.UpdateLinkStatus(id, *req.IsActive); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "Link updated"})
+	}
+}
+
+func DeleteLink(service *services.LinkService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		if err := service.DeleteLink(id); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusNoContent, nil)
 	}
 }

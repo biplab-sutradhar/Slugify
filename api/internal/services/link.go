@@ -43,6 +43,7 @@ func (s *LinkService) SaveLink(longURL string) (models.Link, error) {
 		ID:        uuid.New().String(),
 		ShortCode: shortCode,
 		LongURL:   longURL,
+		IsActive:  true,
 		CreatedAt: time.Now(),
 	}
 
@@ -72,6 +73,7 @@ func (s *LinkService) GetLink(shortCode string) (models.Link, error) {
 		return models.Link{
 			ShortCode: shortCode,
 			LongURL:   longURL,
+			IsActive:  true,
 		}, nil
 	}
 
@@ -80,9 +82,35 @@ func (s *LinkService) GetLink(shortCode string) (models.Link, error) {
 		return models.Link{}, err
 	}
 
+	if !link.IsActive {
+		return models.Link{}, fmt.Errorf("link is deactivated")
+	}
+
 	if err := s.cache.SetURL(ctx, link.ShortCode, link.LongURL); err != nil {
 		fmt.Printf("Warning: Failed to cache URL: %v\\n", err)
 	}
 
 	return link, nil
+}
+
+func (s *LinkService) GetLinkByID(id string) (models.Link, error) {
+	return s.repo.GetLinkByID(id)
+}
+
+func (s *LinkService) ListLinks(limit, offset int) ([]models.Link, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	return s.repo.ListLinks(limit, offset)
+}
+
+func (s *LinkService) UpdateLinkStatus(id string, isActive bool) error {
+	return s.repo.UpdateLinkStatus(id, isActive)
+}
+
+func (s *LinkService) DeleteLink(id string) error {
+	return s.repo.DeleteLink(id)
 }

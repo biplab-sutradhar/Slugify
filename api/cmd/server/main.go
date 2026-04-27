@@ -82,11 +82,11 @@ func main() {
 	// Public redirect route (no auth needed)
 	r.GET("/:shortCode", handlers.ResolveLink(linkService))
 
-	// Public API routes (no auth needed)
-	publicAPI := r.Group("/api")
-	{
-		publicAPI.POST("/keys", handlers.CreateAPIKey(apiKeyService))
-	}
+	// Public API routes to create API keys (no auth needed)
+	// publicAPI := r.Group("/api")
+	// {
+	// 	publicAPI.POST("/keys", handlers.CreateAPIKey(apiKeyService))
+	// }
 
 	// Protected API routes
 	api := r.Group("/api")
@@ -94,6 +94,10 @@ func main() {
 	api.Use(middleware.RateLimitMiddleware(redisClient.GetRawClient()))
 	{
 		api.POST("/shorten", handlers.ShortenLink(linkService))
+		api.GET("/links", handlers.ListLinks(linkService))
+		api.GET("/links/:id", handlers.GetLink(linkService))
+		api.PATCH("/links/:id", handlers.UpdateLink(linkService))
+		api.DELETE("/links/:id", handlers.DeleteLink(linkService))
 		api.GET("/keys", handlers.ListAPIKeys(apiKeyService))
 		api.DELETE("/keys/:id", handlers.DeleteAPIKey(apiKeyService))
 	}
