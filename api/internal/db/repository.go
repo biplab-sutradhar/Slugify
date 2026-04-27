@@ -9,6 +9,10 @@ import (
 type LinkRepository interface {
 	CreateLink(link models.Link) error
 	GetLinkByShortCode(shortCode string) (models.Link, error)
+	GetLinkByID(id string) (models.Link, error)
+	ListLinks(limit, offset int) ([]models.Link, error)
+	UpdateLinkStatus(id string, isActive bool) error
+	DeleteLink(id string) error
 }
 
 // Range represents an ID range in the database.
