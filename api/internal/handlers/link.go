@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"database/sql"
-	"fmt"
+
 	"net/http"
 	"strconv"
 
@@ -53,12 +53,7 @@ func ResolveLink(service *services.LinkService) gin.HandlerFunc {
 			return
 		}
 
-		apiKeyID := c.GetString("api_key_id")
-		if apiKeyID != "" {
-			if err := service.IncrementAPIKeyUsage(c, apiKeyID); err != nil {
-				fmt.Printf("Warning: Failed to update usage: %v\\n", err)
-			}
-		}
+		go service.IncrementClicks(shortCode)
 
 		c.Redirect(http.StatusFound, link.LongURL)
 	}

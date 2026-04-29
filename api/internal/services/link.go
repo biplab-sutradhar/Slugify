@@ -114,3 +114,8 @@ func (s *LinkService) UpdateLinkStatus(id string, isActive bool) error {
 func (s *LinkService) DeleteLink(id string) error {
 	return s.repo.DeleteLink(id)
 }
+func (s *LinkService) IncrementClicks(shortCode string) {
+	if err := s.repo.IncrementClicks(shortCode); err != nil {
+		fmt.Printf("Warning: Failed to increment clicks: %v\\n", err)
+	}
+}

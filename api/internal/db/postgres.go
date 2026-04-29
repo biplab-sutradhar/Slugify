@@ -32,14 +32,10 @@ func (r *PostgresLinkRepository) CreateLink(link models.Link) error {
 func (r *PostgresLinkRepository) GetLinkByShortCode(shortCode string) (models.Link, error) {
 	var link models.Link
 	query := `
-		SELECT id, short_code, long_url, is_active, created_at
-		FROM links
-		WHERE short_code = $1
-	`
-	err := r.db.QueryRow(query, shortCode).Scan(&link.ID, &link.ShortCode, &link.LongURL, &link.IsActive, &link.CreatedAt)
-	if err == sql.ErrNoRows {
-		return models.Link{}, err
-	}
+	SELECT id, short_code, long_url, is_active, clicks, created_at
+	FROM links WHERE short_code = $1
+`
+	err := r.db.QueryRow(query, shortCode).Scan(&link.ID, &link.ShortCode, &link.LongURL, &link.IsActive, &link.Clicks, &link.CreatedAt)
 	if err != nil {
 		return models.Link{}, err
 	}
@@ -239,11 +235,10 @@ func (r *PostgresAPIKeyRepository) IncrementUsage(ctx context.Context, apiKeyID 
 func (r *PostgresLinkRepository) GetLinkByID(id string) (models.Link, error) {
 	var link models.Link
 	query := `
-		SELECT id, short_code, long_url, is_active, created_at
-		FROM links
-		WHERE id = $1
-	`
-	err := r.db.QueryRow(query, id).Scan(&link.ID, &link.ShortCode, &link.LongURL, &link.IsActive, &link.CreatedAt)
+	SELECT id, short_code, long_url, is_active, clicks, created_at
+	FROM links WHERE id = $1
+`
+	err := r.db.QueryRow(query, id).Scan(&link.ID, &link.ShortCode, &link.LongURL, &link.IsActive, &link.Clicks, &link.CreatedAt)
 	if err != nil {
 		return models.Link{}, err
 	}
@@ -252,11 +247,9 @@ func (r *PostgresLinkRepository) GetLinkByID(id string) (models.Link, error) {
 
 func (r *PostgresLinkRepository) ListLinks(limit, offset int) ([]models.Link, error) {
 	query := `
-		SELECT id, short_code, long_url, is_active, created_at
-		FROM links
-		ORDER BY created_at DESC
-		LIMIT $1 OFFSET $2
-	`
+	SELECT id, short_code, long_url, is_active, clicks, created_at
+	FROM links ORDER BY created_at DESC LIMIT $1 OFFSET $2
+`
 	rows, err := r.db.Query(query, limit, offset)
 	if err != nil {
 		return nil, err
@@ -266,7 +259,7 @@ func (r *PostgresLinkRepository) ListLinks(limit, offset int) ([]models.Link, er
 	var links []models.Link
 	for rows.Next() {
 		var link models.Link
-		if err := rows.Scan(&link.ID, &link.ShortCode, &link.LongURL, &link.IsActive, &link.CreatedAt); err != nil {
+		if err := rows.Scan(&link.ID, &link.ShortCode, &link.LongURL, &link.IsActive, &link.Clicks, &link.CreatedAt); err != nil {
 			return nil, err
 		}
 		links = append(links, link)
@@ -281,5 +274,10 @@ func (r *PostgresLinkRepository) UpdateLinkStatus(id string, isActive bool) erro
 
 func (r *PostgresLinkRepository) DeleteLink(id string) error {
 	_, err := r.db.Exec("DELETE FROM links WHERE id = $1", id)
+	return err
+}
+
+func (r *PostgresLinkRepository) IncrementClicks(shortCode string) error {
+	_, err := r.db.Exec("UPDATE links SET clicks = clicks + 1 WHERE short_code = $1", shortCode)
 	return err
 }

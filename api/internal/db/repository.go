@@ -13,6 +13,7 @@ type LinkRepository interface {
 	ListLinks(limit, offset int) ([]models.Link, error)
 	UpdateLinkStatus(id string, isActive bool) error
 	DeleteLink(id string) error
+	IncrementClicks(shortCode string) error
 }
 
 // Range represents an ID range in the database.
@@ -38,12 +39,4 @@ type APIKeyRepository interface {
 	GetAPIKeys(ctx context.Context) ([]models.APIKey, error)
 	DeleteAPIKey(ctx context.Context, id string) error
 	IncrementUsage(ctx context.Context, apiKeyID string) error
-}
-
-type AnalyticsRepository interface {
-	RecordClick(ctx context.Context, event models.ClickEvent) error
-	GetTotalClicks(ctx context.Context, linkID string) (int64, error)
-	GetClicksByDay(ctx context.Context, linkID string, days int) ([]models.DayClickCount, error)
-	GetTopReferrers(ctx context.Context, linkID string, limit int) ([]models.ReferrerCount, error)
-	GetTopCountries(ctx context.Context, linkID string, limit int) ([]models.CountryCount, error)
 }
