@@ -99,6 +99,7 @@ func main() {
 		api.PATCH("/links/:id", handlers.UpdateLink(linkService))
 		api.DELETE("/links/:id", handlers.DeleteLink(linkService))
 		api.GET("/keys", handlers.ListAPIKeys(apiKeyService))
+		api.POST("/keys", handlers.CreateAPIKey(apiKeyService))
 		api.DELETE("/keys/:id", handlers.DeleteAPIKey(apiKeyService))
 	}
 
