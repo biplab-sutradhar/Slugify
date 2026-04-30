@@ -65,6 +65,8 @@ func main() {
 	apiKeyRepo := db.NewPostgresAPIKeyRepository(database)
 	linkService := services.NewLinkService(repo, redisClient, ticketServer, apiKeyRepo, cfg.DomainURL)
 	apiKeyService := services.NewAPIKeyService(apiKeyRepo)
+	userRepo := db.NewPostgresUserRepository(database)
+	authService := services.NewAuthService(userRepo, apiKeyRepo, cfg.JWTSecret)
 
 	r := gin.Default()
 
@@ -101,6 +103,21 @@ func main() {
 		api.GET("/keys", handlers.ListAPIKeys(apiKeyService))
 		api.POST("/keys", handlers.CreateAPIKey(apiKeyService))
 		api.DELETE("/keys/:id", handlers.DeleteAPIKey(apiKeyService))
+	}
+
+	auth := r.Group("/auth")
+	{
+		auth.POST("/register", handlers.Register(authService))
+		auth.POST("/login", handlers.Login(authService))
+	}
+	authProtected := r.Group("/auth")
+	authProtected.Use(middleware.JWTAuthMiddleware(cfg.JWTSecret))
+	{
+		authProtected.GET("/me", handlers.Me(authService))
+		authProtected.POST("/api-key", handlers.MintAPIKey(authService))
+		authProtected.GET("/keys", handlers.ListAPIKeys(apiKeyService))
+		authProtected.POST("/keys", handlers.CreateAPIKey(apiKeyService))
+		authProtected.DELETE("/keys/:id", handlers.DeleteAPIKey(apiKeyService))
 	}
 
 	if err := r.Run(":" + cfg.Port); err != nil {
