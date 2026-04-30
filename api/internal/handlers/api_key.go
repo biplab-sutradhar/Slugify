@@ -9,16 +9,23 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// CreateAPIKey handles POST /api/keys.
+// CreateAPIKey handles POST /api/keys or POST /auth/keys.
 func CreateAPIKey(apiKeyService *services.APIKeyService) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// Support both API key auth and JWT auth
+		userID := c.GetString("user_id")
+		if userID == "" {
+			// If no JWT user_id, get from API key auth context if available
+			userID = c.GetString("api_key_user_id")
+		}
+
 		var req models.CreateAPIKeyRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON"})
 			return
 		}
 
-		key, err := apiKeyService.CreateAPIKey(c, req)
+		key, err := apiKeyService.CreateAPIKey(c, userID, req)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -37,10 +44,17 @@ func CreateAPIKey(apiKeyService *services.APIKeyService) gin.HandlerFunc {
 	}
 }
 
-// ListAPIKeys handles GET /api/keys.
+// ListAPIKeys handles GET /api/keys or GET /auth/keys.
 func ListAPIKeys(apiKeyService *services.APIKeyService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		keys, err := apiKeyService.ListAPIKeys(c)
+		// Support both API key auth and JWT auth
+		userID := c.GetString("user_id")
+		if userID == "" {
+			// If no JWT user_id, get from API key auth context if available
+			userID = c.GetString("api_key_user_id")
+		}
+
+		keys, err := apiKeyService.ListAPIKeys(c, userID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return

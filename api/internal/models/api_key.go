@@ -5,6 +5,7 @@ import "time"
 // APIKey represents an API key in the database.
 type APIKey struct {
 	ID        string    `json:"id" db:"id"`
+	UserID    string    `json:"user_id" db:"user_id"`
 	Key       string    `json:"key" db:"key"`
 	Name      string    `json:"name" db:"name"`
 	Scope     string    `json:"scope" db:"scope"`

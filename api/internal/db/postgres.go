@@ -165,10 +165,10 @@ func NewPostgresAPIKeyRepository(db *sql.DB) *PostgresAPIKeyRepository {
 // CreateAPIKey inserts a new API key into the database.
 func (r *PostgresAPIKeyRepository) CreateAPIKey(ctx context.Context, key models.APIKey) error {
 	query := `
-		INSERT INTO api_keys (id, key, name, scope, is_active, created_at, usage)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO api_keys (id, user_id, key, name, scope, is_active, created_at, usage)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 	`
-	_, err := r.db.ExecContext(ctx, query, key.ID, key.Key, key.Name, key.Scope, key.IsActive, key.CreatedAt, key.Usage)
+	_, err := r.db.ExecContext(ctx, query, key.ID, key.UserID, key.Key, key.Name, key.Scope, key.IsActive, key.CreatedAt, key.Usage)
 	return err
 }
 
@@ -176,12 +176,12 @@ func (r *PostgresAPIKeyRepository) CreateAPIKey(ctx context.Context, key models.
 func (r *PostgresAPIKeyRepository) GetAPIKeyByKey(ctx context.Context, key string) (models.APIKey, error) {
 	var apiKey models.APIKey
 	query := `
-		SELECT id, key, name, scope, is_active, created_at, usage
+		SELECT id, user_id, key, name, scope, is_active, created_at, usage
 		FROM api_keys
 		WHERE key = $1
 	`
 	err := r.db.QueryRowContext(ctx, query, key).Scan(
-		&apiKey.ID, &apiKey.Key, &apiKey.Name, &apiKey.Scope, &apiKey.IsActive, &apiKey.CreatedAt, &apiKey.Usage,
+		&apiKey.ID, &apiKey.UserID, &apiKey.Key, &apiKey.Name, &apiKey.Scope, &apiKey.IsActive, &apiKey.CreatedAt, &apiKey.Usage,
 	)
 	if err == sql.ErrNoRows {
 		return models.APIKey{}, err
@@ -195,7 +195,7 @@ func (r *PostgresAPIKeyRepository) GetAPIKeyByKey(ctx context.Context, key strin
 // GetAPIKeys retrieves all API keys.
 func (r *PostgresAPIKeyRepository) GetAPIKeys(ctx context.Context) ([]models.APIKey, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, key, name, scope, is_active, created_at, usage
+		SELECT id, user_id, key, name, scope, is_active, created_at, usage
 		FROM api_keys
 	`)
 	if err != nil {
@@ -207,7 +207,33 @@ func (r *PostgresAPIKeyRepository) GetAPIKeys(ctx context.Context) ([]models.API
 	for rows.Next() {
 		var key models.APIKey
 		if err := rows.Scan(
-			&key.ID, &key.Key, &key.Name, &key.Scope, &key.IsActive, &key.CreatedAt, &key.Usage,
+			&key.ID, &key.UserID, &key.Key, &key.Name, &key.Scope, &key.IsActive, &key.CreatedAt, &key.Usage,
+		); err != nil {
+			return nil, err
+		}
+		keys = append(keys, key)
+	}
+	return keys, nil
+}
+
+// GetAPIKeysByUser retrieves all API keys for a specific user.
+func (r *PostgresAPIKeyRepository) GetAPIKeysByUser(ctx context.Context, userID string) ([]models.APIKey, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT id, user_id, key, name, scope, is_active, created_at, usage
+		FROM api_keys
+		WHERE user_id = $1
+		ORDER BY created_at DESC
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var keys []models.APIKey
+	for rows.Next() {
+		var key models.APIKey
+		if err := rows.Scan(
+			&key.ID, &key.UserID, &key.Key, &key.Name, &key.Scope, &key.IsActive, &key.CreatedAt, &key.Usage,
 		); err != nil {
 			return nil, err
 		}
