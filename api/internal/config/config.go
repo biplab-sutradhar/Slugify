@@ -12,6 +12,7 @@ type Config struct {
 	DatabaseURL string
 	RedisURL    string
 	DomainURL   string
+	JWTSecret   string
 }
 
 func LoadConfig() Config {
@@ -43,6 +44,11 @@ func LoadConfig() Config {
 	domainURL := os.Getenv("DOMAINURL")
 	if domainURL == "" {
 		log.Fatal("DOMAINURL is not set in environment variables")
+	}
+
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		log.Fatal("JWT_SECRET is not set in environment variables")
 	}
 
 	return Config{

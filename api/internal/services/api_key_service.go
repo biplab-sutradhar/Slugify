@@ -20,8 +20,8 @@ func NewAPIKeyService(repo db.APIKeyRepository) *APIKeyService {
 	return &APIKeyService{repo: repo}
 }
 
-// CreateAPIKey creates a new API key.
-func (s *APIKeyService) CreateAPIKey(ctx context.Context, req models.CreateAPIKeyRequest) (models.APIKey, error) {
+// CreateAPIKey creates a new API key for a user.
+func (s *APIKeyService) CreateAPIKey(ctx context.Context, userID string, req models.CreateAPIKeyRequest) (models.APIKey, error) {
 	key, err := auth.GenerateAPIKey()
 	if err != nil {
 		return models.APIKey{}, err
@@ -29,6 +29,7 @@ func (s *APIKeyService) CreateAPIKey(ctx context.Context, req models.CreateAPIKe
 
 	apiKey := models.APIKey{
 		ID:        uuid.New().String(),
+		UserID:    userID,
 		Key:       key,
 		Name:      req.Name,
 		Scope:     req.Scope,
@@ -44,9 +45,9 @@ func (s *APIKeyService) CreateAPIKey(ctx context.Context, req models.CreateAPIKe
 	return apiKey, nil
 }
 
-// ListAPIKeys lists all API keys.
-func (s *APIKeyService) ListAPIKeys(ctx context.Context) ([]models.APIKey, error) {
-	return s.repo.GetAPIKeys(ctx)
+// ListAPIKeys lists all API keys for a user.
+func (s *APIKeyService) ListAPIKeys(ctx context.Context, userID string) ([]models.APIKey, error) {
+	return s.repo.GetAPIKeysByUser(ctx, userID)
 }
 
 // DeleteAPIKey deletes an API key by ID.

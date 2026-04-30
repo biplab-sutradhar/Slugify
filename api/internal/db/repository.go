@@ -37,6 +37,13 @@ type APIKeyRepository interface {
 	CreateAPIKey(ctx context.Context, key models.APIKey) error
 	GetAPIKeyByKey(ctx context.Context, key string) (models.APIKey, error)
 	GetAPIKeys(ctx context.Context) ([]models.APIKey, error)
+	GetAPIKeysByUser(ctx context.Context, userID string) ([]models.APIKey, error)
 	DeleteAPIKey(ctx context.Context, id string) error
 	IncrementUsage(ctx context.Context, apiKeyID string) error
+}
+
+type UserRepository interface {
+	CreateUser(ctx context.Context, user models.User) error
+	GetUserByEmail(ctx context.Context, email string) (models.User, error)
+	GetUserByID(ctx context.Context, id string) (models.User, error)
 }

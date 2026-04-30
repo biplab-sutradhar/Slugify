@@ -2,20 +2,44 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #0a0a0a;
+  --muted: #6b7280;
+  --surface: #fafafa;
+  --surface-2: #f4f4f5;
+  --border: rgba(10, 10, 10, 0.08);
+  --accent: #4f46e5;
+  --accent-foreground: #ffffff;
+  --ring: rgba(79, 70, 229, 0.35);
+  --success: #059669;
+  --danger: #dc2626;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-success: var(--success);
+  --color-danger: var(--danger);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #09090b;
+    --foreground: #fafafa;
+    --muted: #a1a1aa;
+    --surface: #111114;
+    --surface-2: #18181b;
+    --border: rgba(250, 250, 250, 0.1);
+    --accent: #818cf8;
+    --accent-foreground: #0a0a0a;
+    --ring: rgba(129, 140, 248, 0.45);
   }
 }
 
@@ -23,4 +47,16 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  border-color: var(--border);
+}
+
+.gradient-mesh {
+  background:
+    radial-gradient(60% 40% at 20% 10%, rgba(79, 70, 229, 0.18), transparent 60%),
+    radial-gradient(50% 40% at 90% 20%, rgba(236, 72, 153, 0.12), transparent 60%),
+    radial-gradient(40% 40% at 50% 90%, rgba(34, 197, 94, 0.12), transparent 60%);
 }
