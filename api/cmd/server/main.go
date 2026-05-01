@@ -110,15 +110,6 @@ func main() {
 		auth.POST("/register", handlers.Register(authService))
 		auth.POST("/login", handlers.Login(authService))
 	}
-	authProtected := r.Group("/auth")
-	authProtected.Use(middleware.JWTAuthMiddleware(cfg.JWTSecret))
-	{
-		authProtected.GET("/me", handlers.Me(authService))
-		authProtected.POST("/api-key", handlers.MintAPIKey(authService))
-		authProtected.GET("/keys", handlers.ListAPIKeys(apiKeyService))
-		authProtected.POST("/keys", handlers.CreateAPIKey(apiKeyService))
-		authProtected.DELETE("/keys/:id", handlers.DeleteAPIKey(apiKeyService))
-	}
 
 	if err := r.Run(":" + cfg.Port); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
