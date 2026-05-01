@@ -25,6 +25,17 @@ const STORAGE_API_KEY = "slugify_api_key";
 
 const AuthContext = createContext<AuthState | null>(null);
 
+function isAuthError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  const m = err.message.toLowerCase();
+  return (
+    m.includes("invalid token") ||
+    m.includes("missing bearer") ||
+    m.includes("unauthorized") ||
+    m.includes("user not identified")
+  );
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -33,29 +44,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const t = localStorage.getItem(STORAGE_TOKEN);
-    const u = localStorage.getItem(STORAGE_USER);
+    const uRaw = localStorage.getItem(STORAGE_USER);
     const k = localStorage.getItem(STORAGE_API_KEY);
+
     if (k) setApiKey(k);
 
-    if (t && u) {
+    if (t && uRaw) {
       setToken(t);
       try {
-        setUser(JSON.parse(u) as User);
+        setUser(JSON.parse(uRaw) as User);
       } catch {
-        /* ignore */
+        // bad cache; harmless, we'll refresh below
       }
+
+      // Background refresh — never block the UI on this and never logout
+      // unless the server returns an explicit auth error.
       me(t)
         .then((fresh) => {
           setUser(fresh);
           localStorage.setItem(STORAGE_USER, JSON.stringify(fresh));
         })
-        .catch(() => {
-          localStorage.removeItem(STORAGE_TOKEN);
-          localStorage.removeItem(STORAGE_USER);
-          localStorage.removeItem(STORAGE_API_KEY);
-          setToken(null);
-          setUser(null);
-          setApiKey(null);
+        .catch((err) => {
+          if (isAuthError(err)) {
+            localStorage.removeItem(STORAGE_TOKEN);
+            localStorage.removeItem(STORAGE_USER);
+            localStorage.removeItem(STORAGE_API_KEY);
+            setToken(null);
+            setUser(null);
+            setApiKey(null);
+          }
+          // Network error / server down? Keep the cached session so the
+          // user isn't kicked out for a transient issue.
         })
         .finally(() => setLoading(false));
     } else {

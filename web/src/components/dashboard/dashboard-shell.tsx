@@ -9,6 +9,7 @@ const items = [
   { href: "/dashboard", label: "Overview" },
   { href: "/dashboard/links", label: "Links" },
   { href: "/dashboard/keys", label: "API keys" },
+  { href: "/dashboard/analytics", label: "Analytics" },
 ];
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {

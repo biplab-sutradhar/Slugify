@@ -1,39 +1,37 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
-  createApiKey,
-  deleteApiKey,
-  listApiKeys,
   type ApiKey,
-} from '@/lib/slugify-api';
-import { useAuth } from '@/lib/auth-context';
+  createMyKey,
+  deleteMyKey,
+  listMyKeys,
+} from "@/lib/auth-api";
+import { useAuth } from "@/lib/auth-context";
 
 export default function KeysPage() {
-  const { apiKey } = useAuth();
+  const { token, apiKey } = useAuth();
   const [keys, setKeys] = useState<ApiKey[]>([]);
-  const [name, setName] = useState('');
-  const [scope, setScope] = useState('default');
+  const [name, setName] = useState("");
+  const [scope, setScope] = useState("default");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [justCreated, setJustCreated] = useState<ApiKey | null>(null);
 
   const refresh = useCallback(async () => {
-    if (!apiKey) {
-      setKeys([]);
-      return;
-    }
+    if (!token) return;
     setError(null);
     setLoading(true);
     try {
-      const data = await listApiKeys(apiKey);
-      setKeys(data);
+      setKeys(await listMyKeys(token));
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load keys');
+      setError(e instanceof Error ? e.message : "Failed to load keys");
     } finally {
       setLoading(false);
     }
-  }, [apiKey]);
+  }, [token]);
 
   useEffect(() => {
     void refresh();
@@ -41,98 +39,84 @@ export default function KeysPage() {
 
   const onCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    setJustCreated(null);
-    if (!apiKey) {
-      setError('API key is being provisioned. Please wait.');
+    if (!token) {
+      setError("Not signed in.");
       return;
     }
+    setError(null);
+    setJustCreated(null);
     setLoading(true);
     try {
-      const created = await createApiKey(
-        { name: name.trim(), scope: scope.trim() || 'default' },
-        apiKey,
-      );
+      const created = await createMyKey(token, {
+        name: name.trim() || "API key",
+        scope: scope.trim() || "default",
+      });
       setJustCreated(created);
-      setName('');
+      setName("");
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Create failed');
+      setError(err instanceof Error ? err.message : "Create failed");
     } finally {
       setLoading(false);
     }
   };
 
   const onRevoke = async (id: string) => {
-    if (!confirm('Revoke this key? This cannot be undone.')) return;
-    if (!apiKey) {
-      setError('API key required.');
-      return;
-    }
+    if (!token) return;
+    if (!confirm("Revoke this key? This cannot be undone.")) return;
     try {
-      await deleteApiKey(id, apiKey);
+      await deleteMyKey(token, id);
       await refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Revoke failed');
+      setError(e instanceof Error ? e.message : "Revoke failed");
     }
   };
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-16">
-      <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">
-        Slugify
-      </p>
-      <h1 className="mt-3 text-3xl font-medium tracking-tight">API keys</h1>
-      <p className="mt-2 text-sm text-neutral-500">
-        Manage keys that can call the Slugify API.
+    <div className="mx-auto max-w-5xl px-6 py-10">
+      <p className="text-xs uppercase tracking-[0.2em] text-muted">Settings</p>
+      <h1 className="mt-1 text-2xl font-semibold tracking-tight">API keys</h1>
+      <p className="mt-2 text-sm text-muted">
+        Use these to call the Slugify API from external scripts or services.
       </p>
 
       {apiKey && (
-        <section className="mt-10 space-y-4 rounded-lg border border-black/10 bg-black/[0.02] p-4 dark:border-white/10 dark:bg-white/[0.02]">
-          <div>
-            <label className="block text-xs font-medium uppercase tracking-[0.1em] text-neutral-600 dark:text-neutral-400">
-              Your API Key
-            </label>
-            <code className="mt-2 block break-all font-mono text-sm text-neutral-700 dark:text-neutral-300">
-              {apiKey}
-            </code>
+        <section className="mt-8 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
+          <p className="text-xs uppercase tracking-[0.15em] text-muted">
+            Default key (auto-provisioned)
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            <code className="break-all font-mono text-sm">{apiKey}</code>
+            <button
+              type="button"
+              onClick={() => navigator.clipboard.writeText(apiKey)}
+              className="text-xs underline underline-offset-4"
+            >
+              Copy
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => navigator.clipboard.writeText(apiKey)}
-            className="text-xs text-neutral-600 underline underline-offset-4 hover:text-foreground dark:text-neutral-400"
-          >
-            Copy to clipboard
-          </button>
         </section>
       )}
 
       <form onSubmit={onCreate} className="mt-10 space-y-4">
-        <h2 className="text-lg font-medium">Create key</h2>
+        <h2 className="text-lg font-medium">Create a new key</h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <input
-            required
+          <Input
             type="text"
             placeholder="Name (e.g. mobile app)"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="rounded-lg border border-black/10 bg-transparent px-3 py-2 text-sm outline-none ring-foreground/15 focus:ring-2 dark:border-white/15"
           />
-          <input
+          <Input
             type="text"
             placeholder="Scope (default)"
             value={scope}
             onChange={(e) => setScope(e.target.value)}
-            className="rounded-lg border border-black/10 bg-transparent px-3 py-2 text-sm outline-none ring-foreground/15 focus:ring-2 dark:border-white/15"
           />
         </div>
-        <button
-          type="submit"
-          disabled={loading}
-          className="rounded-full bg-foreground px-5 py-2 text-sm font-medium text-background transition hover:opacity-90 disabled:opacity-40"
-        >
-          {loading ? 'Working…' : 'Create key'}
-        </button>
+        <Button type="submit" disabled={loading || !token}>
+          {loading ? "Working…" : "Create key"}
+        </Button>
       </form>
 
       {error && (
@@ -144,7 +128,7 @@ export default function KeysPage() {
       {justCreated && (
         <div className="mt-8 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
           <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
-            Save this key now — it won’t be shown again
+            Save this key now — you'll only see the full value here.
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-3">
             <code className="break-all font-mono text-sm">
@@ -161,11 +145,11 @@ export default function KeysPage() {
         </div>
       )}
 
-      <section className="mt-14">
+      <section className="mt-12">
         <h2 className="text-lg font-medium">All keys</h2>
-        <div className="mt-6 overflow-hidden rounded-xl border border-black/10 dark:border-white/10">
+        <div className="mt-4 overflow-hidden rounded-xl border border-[var(--border)]">
           <table className="w-full text-left text-sm">
-            <thead className="border-b border-black/10 bg-black/[0.03] dark:border-white/10 dark:bg-white/[0.04]">
+            <thead className="border-b border-[var(--border)] bg-[var(--surface-2)]">
               <tr>
                 <th className="px-3 py-2 font-medium">Name</th>
                 <th className="px-3 py-2 font-medium">Scope</th>
@@ -175,33 +159,17 @@ export default function KeysPage() {
               </tr>
             </thead>
             <tbody>
-              {!apiKey && (
+              {!loading && keys.length === 0 && (
                 <tr>
-                  <td
-                    colSpan={5}
-                    className="px-3 py-8 text-center text-neutral-500"
-                  >
-                    Loading API key…
-                  </td>
-                </tr>
-              )}
-              {apiKey && keys.length === 0 && !loading && (
-                <tr>
-                  <td
-                    colSpan={5}
-                    className="px-3 py-8 text-center text-neutral-500"
-                  >
+                  <td colSpan={5} className="px-3 py-8 text-center text-muted">
                     No keys yet.
                   </td>
                 </tr>
               )}
               {keys.map((k) => (
-                <tr
-                  key={k.id}
-                  className="border-t border-black/5 dark:border-white/10"
-                >
-                  <td className="max-w-[12rem] truncate px-3 py-2">
-                    {k.name || '—'}
+                <tr key={k.id} className="border-t border-[var(--border)]">
+                  <td className="max-w-[14rem] truncate px-3 py-2">
+                    {k.name || "—"}
                   </td>
                   <td className="px-3 py-2">{k.scope}</td>
                   <td className="px-3 py-2 tabular-nums">{k.usage}</td>
@@ -209,18 +177,18 @@ export default function KeysPage() {
                     <span
                       className={
                         k.is_active
-                          ? 'text-emerald-600 dark:text-emerald-400'
-                          : 'text-neutral-500'
+                          ? "text-[var(--success)]"
+                          : "text-muted"
                       }
                     >
-                      {k.is_active ? 'On' : 'Off'}
+                      {k.is_active ? "Active" : "Off"}
                     </span>
                   </td>
                   <td className="px-3 py-2 text-right">
                     <button
                       type="button"
                       onClick={() => void onRevoke(k.id)}
-                      className="text-xs text-red-600 underline underline-offset-4 dark:text-red-400"
+                      className="text-xs text-[var(--danger)] underline underline-offset-4"
                     >
                       Revoke
                     </button>
@@ -231,6 +199,6 @@ export default function KeysPage() {
           </table>
         </div>
       </section>
-    </main>
+    </div>
   );
 }

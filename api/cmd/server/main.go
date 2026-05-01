@@ -85,10 +85,10 @@ func main() {
 	r.GET("/:shortCode", handlers.ResolveLink(linkService))
 
 	// Public API routes to create API keys (no auth needed)
-	// publicAPI := r.Group("/api")
-	// {
-	// 	publicAPI.POST("/keys", handlers.CreateAPIKey(apiKeyService))
-	// }
+	publicAPI := r.Group("/api")
+	{
+		publicAPI.POST("/keys", handlers.CreateAPIKey(apiKeyService))
+	}
 
 	// Protected API routes
 	api := r.Group("/api")
@@ -101,7 +101,7 @@ func main() {
 		api.PATCH("/links/:id", handlers.UpdateLink(linkService))
 		api.DELETE("/links/:id", handlers.DeleteLink(linkService))
 		api.GET("/keys", handlers.ListAPIKeys(apiKeyService))
-		api.POST("/keys", handlers.CreateAPIKey(apiKeyService))
+		// api.POST("/keys", handlers.CreateAPIKey(apiKeyService))
 		api.DELETE("/keys/:id", handlers.DeleteAPIKey(apiKeyService))
 	}
 

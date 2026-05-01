@@ -69,3 +69,48 @@ export async function mintApiKey(token: string): Promise<{ api_key: string }> {
   if (!res.ok) throw new Error(await parseError(res));
   return res.json();
 }
+
+export type ApiKey = {
+  id: string;
+  key: string;
+  name: string;
+  scope: string;
+  is_active: boolean;
+  created_at: string;
+  usage: number;
+};
+
+function jwtHeaders(token: string): HeadersInit {
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+}
+
+export async function listMyKeys(token: string): Promise<ApiKey[]> {
+  const res = await fetch(`${BASE}/keys`, { headers: jwtHeaders(token) });
+  if (!res.ok) throw new Error(await parseError(res));
+  const data = (await res.json()) as ApiKey[] | null;
+  return data ?? [];
+}
+
+export async function createMyKey(
+  token: string,
+  body: { name: string; scope: string }
+): Promise<ApiKey> {
+  const res = await fetch(`${BASE}/keys`, {
+    method: "POST",
+    headers: jwtHeaders(token),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await parseError(res));
+  return res.json();
+}
+
+export async function deleteMyKey(token: string, id: string): Promise<void> {
+  const res = await fetch(`${BASE}/keys/${id}`, {
+    method: "DELETE",
+    headers: jwtHeaders(token),
+  });
+  if (!res.ok) throw new Error(await parseError(res));
+}
