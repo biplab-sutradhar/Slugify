@@ -51,6 +51,6 @@ func (s *APIKeyService) ListAPIKeys(ctx context.Context, userID string) ([]model
 }
 
 // DeleteAPIKey deletes an API key by ID.
-func (s *APIKeyService) DeleteAPIKey(ctx context.Context, id string) error {
-	return s.repo.DeleteAPIKey(ctx, id)
+func (s *APIKeyService) DeleteAPIKey(ctx context.Context, id, userID string) error {
+	return s.repo.DeleteAPIKeyForUser(ctx, id, userID)
 }

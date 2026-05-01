@@ -20,17 +20,30 @@ type LinkService struct {
 	domainURL    string
 }
 
-func NewLinkService(repo db.LinkRepository, cache cache.Cache, ticketServer idgen.TicketServer, apiKeyRepo db.APIKeyRepository, domainURL string) *LinkService {
-	return &LinkService{repo: repo, cache: cache, ticketServer: ticketServer, apiKeyRepo: apiKeyRepo, domainURL: domainURL}
+func NewLinkService(
+	repo db.LinkRepository,
+	cache cache.Cache,
+	ticketServer idgen.TicketServer,
+	apiKeyRepo db.APIKeyRepository,
+	domainURL string,
+) *LinkService {
+	return &LinkService{
+		repo:         repo,
+		cache:        cache,
+		ticketServer: ticketServer,
+		apiKeyRepo:   apiKeyRepo,
+		domainURL:    domainURL,
+	}
 }
 
-func (s *LinkService) GetDomainURL() string {
-	return s.domainURL
-}
+func (s *LinkService) GetDomainURL() string { return s.domainURL }
 
-func (s *LinkService) SaveLink(longURL string) (models.Link, error) {
+func (s *LinkService) SaveLink(userID, longURL string) (models.Link, error) {
 	if longURL == "" {
 		return models.Link{}, fmt.Errorf("long_url cannot be empty")
+	}
+	if userID == "" {
+		return models.Link{}, fmt.Errorf("user_id is required")
 	}
 
 	ctx := context.Background()
@@ -41,6 +54,7 @@ func (s *LinkService) SaveLink(longURL string) (models.Link, error) {
 
 	link := models.Link{
 		ID:        uuid.New().String(),
+		UserID:    userID,
 		ShortCode: shortCode,
 		LongURL:   longURL,
 		IsActive:  true,
@@ -54,7 +68,6 @@ func (s *LinkService) SaveLink(longURL string) (models.Link, error) {
 	if err := s.cache.SetURL(ctx, link.ShortCode, link.LongURL); err != nil {
 		fmt.Printf("Warning: Failed to cache URL: %v\\n", err)
 	}
-
 	return link, nil
 }
 
@@ -62,6 +75,7 @@ func (s *LinkService) IncrementAPIKeyUsage(ctx context.Context, apiKeyID string)
 	return s.apiKeyRepo.IncrementUsage(ctx, apiKeyID)
 }
 
+// Public redirect — not user-scoped on purpose.
 func (s *LinkService) GetLink(shortCode string) (models.Link, error) {
 	ctx := context.Background()
 
@@ -70,18 +84,13 @@ func (s *LinkService) GetLink(shortCode string) (models.Link, error) {
 		fmt.Printf("Warning: Cache error: %v\\n", err)
 	}
 	if longURL != "" {
-		return models.Link{
-			ShortCode: shortCode,
-			LongURL:   longURL,
-			IsActive:  true,
-		}, nil
+		return models.Link{ShortCode: shortCode, LongURL: longURL, IsActive: true}, nil
 	}
 
 	link, err := s.repo.GetLinkByShortCode(shortCode)
 	if err != nil {
 		return models.Link{}, err
 	}
-
 	if !link.IsActive {
 		return models.Link{}, fmt.Errorf("link is deactivated")
 	}
@@ -89,31 +98,31 @@ func (s *LinkService) GetLink(shortCode string) (models.Link, error) {
 	if err := s.cache.SetURL(ctx, link.ShortCode, link.LongURL); err != nil {
 		fmt.Printf("Warning: Failed to cache URL: %v\\n", err)
 	}
-
 	return link, nil
 }
 
-func (s *LinkService) GetLinkByID(id string) (models.Link, error) {
-	return s.repo.GetLinkByID(id)
+func (s *LinkService) GetLinkByID(id, userID string) (models.Link, error) {
+	return s.repo.GetLinkByIDForUser(id, userID)
 }
 
-func (s *LinkService) ListLinks(limit, offset int) ([]models.Link, error) {
+func (s *LinkService) ListLinks(userID string, limit, offset int) ([]models.Link, error) {
 	if limit <= 0 || limit > 100 {
 		limit = 20
 	}
 	if offset < 0 {
 		offset = 0
 	}
-	return s.repo.ListLinks(limit, offset)
+	return s.repo.ListLinksForUser(userID, limit, offset)
 }
 
-func (s *LinkService) UpdateLinkStatus(id string, isActive bool) error {
-	return s.repo.UpdateLinkStatus(id, isActive)
+func (s *LinkService) UpdateLinkStatus(id, userID string, isActive bool) error {
+	return s.repo.UpdateLinkStatusForUser(id, userID, isActive)
 }
 
-func (s *LinkService) DeleteLink(id string) error {
-	return s.repo.DeleteLink(id)
+func (s *LinkService) DeleteLink(id, userID string) error {
+	return s.repo.DeleteLinkForUser(id, userID)
 }
+
 func (s *LinkService) IncrementClicks(shortCode string) {
 	if err := s.repo.IncrementClicks(shortCode); err != nil {
 		fmt.Printf("Warning: Failed to increment clicks: %v\\n", err)

@@ -3,12 +3,14 @@ package services
 import (
 	"context"
 	"errors"
+	"net/http"
 	"strings"
 	"time"
 
 	"github.com/biplab-sutradhar/slugify/api/internal/auth"
 	"github.com/biplab-sutradhar/slugify/api/internal/db"
 	"github.com/biplab-sutradhar/slugify/api/internal/models"
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -97,23 +99,25 @@ func (s *AuthService) MintAPIKey(ctx context.Context, userID, name string) (stri
 	return s.mintAPIKey(ctx, userID, name)
 }
 
-func (s *AuthService) mintAPIKey(ctx context.Context, userID, name string) (string, error) {
-	key, err := auth.GenerateAPIKey()
-	if err != nil {
-		return "", err
+func MintAPIKey(svc *services.AuthService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID := c.GetString("user_id")
+		if userID == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "user not identified"})
+			return
+		}
+		var req struct {
+			Name string `json:"name"`
+		}
+		_ = c.ShouldBindJSON(&req)
+		if req.Name == "" {
+			req.Name = "Default"
+		}
+		key, err := svc.MintAPIKey(c, userID, req.Name)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusCreated, gin.H{"api_key": key})
 	}
-	apiKey := models.APIKey{
-		ID:        uuid.New().String(),
-		UserID:    userID,
-		Key:       key,
-		Name:      name,
-		Scope:     "default",
-		IsActive:  true,
-		CreatedAt: time.Now(),
-		Usage:     0,
-	}
-	if err := s.apiKeys.CreateAPIKey(ctx, apiKey); err != nil {
-		return "", err
-	}
-	return key, nil
 }

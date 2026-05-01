@@ -9,10 +9,10 @@ import (
 type LinkRepository interface {
 	CreateLink(link models.Link) error
 	GetLinkByShortCode(shortCode string) (models.Link, error)
-	GetLinkByID(id string) (models.Link, error)
-	ListLinks(limit, offset int) ([]models.Link, error)
-	UpdateLinkStatus(id string, isActive bool) error
-	DeleteLink(id string) error
+	GetLinkByIDForUser(id, userID string) (models.Link, error)
+	ListLinksForUser(userID string, limit, offset int) ([]models.Link, error)
+	UpdateLinkStatusForUser(id, userID string, isActive bool) error
+	DeleteLinkForUser(id, userID string) error
 	IncrementClicks(shortCode string) error
 }
 
@@ -39,6 +39,7 @@ type APIKeyRepository interface {
 	GetAPIKeys(ctx context.Context) ([]models.APIKey, error)
 	GetAPIKeysByUser(ctx context.Context, userID string) ([]models.APIKey, error)
 	DeleteAPIKey(ctx context.Context, id string) error
+	DeleteAPIKeyForUser(ctx context.Context, id, userID string) error
 	IncrementUsage(ctx context.Context, apiKeyID string) error
 }
 

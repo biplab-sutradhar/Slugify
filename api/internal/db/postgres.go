@@ -21,24 +21,27 @@ func NewPostgresLinkRepository(db *sql.DB) *PostgresLinkRepository {
 // CreateLink inserts a link into the database.
 func (r *PostgresLinkRepository) CreateLink(link models.Link) error {
 	query := `
-		INSERT INTO links (id, short_code, long_url, is_active, created_at)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO links (id, user_id, short_code, long_url, is_active, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6)
 	`
-	_, err := r.db.Exec(query, link.ID, link.ShortCode, link.LongURL, link.IsActive, link.CreatedAt)
+	_, err := r.db.Exec(query, link.ID, link.UserID, link.ShortCode, link.LongURL, link.IsActive, link.CreatedAt)
 	return err
 }
 
-// GetLinkByShortCode retrieves a link by its short code.
 func (r *PostgresLinkRepository) GetLinkByShortCode(shortCode string) (models.Link, error) {
 	var link models.Link
+	var userID sql.NullString
 	query := `
-	SELECT id, short_code, long_url, is_active, clicks, created_at
-	FROM links WHERE short_code = $1
-`
-	err := r.db.QueryRow(query, shortCode).Scan(&link.ID, &link.ShortCode, &link.LongURL, &link.IsActive, &link.Clicks, &link.CreatedAt)
+		SELECT id, user_id, short_code, long_url, is_active, clicks, created_at
+		FROM links WHERE short_code = $1
+	`
+	err := r.db.QueryRow(query, shortCode).Scan(
+		&link.ID, &userID, &link.ShortCode, &link.LongURL, &link.IsActive, &link.Clicks, &link.CreatedAt,
+	)
 	if err != nil {
 		return models.Link{}, err
 	}
+	link.UserID = userID.String
 	return link, nil
 }
 
@@ -306,4 +309,17 @@ func (r *PostgresLinkRepository) DeleteLink(id string) error {
 func (r *PostgresLinkRepository) IncrementClicks(shortCode string) error {
 	_, err := r.db.Exec("UPDATE links SET clicks = clicks + 1 WHERE short_code = $1", shortCode)
 	return err
+}
+
+func (r *PostgresAPIKeyRepository) DeleteAPIKeyForUser(ctx context.Context, id, userID string) error {
+	res, err := r.db.ExecContext(ctx,
+		"DELETE FROM api_keys WHERE id = $1 AND user_id = $2", id, userID,
+	)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }
