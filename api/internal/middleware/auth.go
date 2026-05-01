@@ -8,33 +8,29 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// AuthMiddleware authenticates requests using API keys.
+// AuthMiddleware authenticates requests using API keys
+// and exposes the owning user via the Gin context.
 func AuthMiddleware(apiKeyRepo db.APIKeyRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		apiKey := c.GetHeader("X-API-Key")
 		if apiKey == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "API key required"})
-			c.Abort()
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "API key required"})
 			return
 		}
 
-		// Validate API key format
 		if err := auth.ValidateAPIKey(apiKey); err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid API key format"})
-			c.Abort()
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid API key format"})
 			return
 		}
 
-		// Check if API key exists and is active
 		key, err := apiKeyRepo.GetAPIKeyByKey(c, apiKey)
 		if err != nil || !key.IsActive {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or inactive API key"})
-			c.Abort()
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid or inactive API key"})
 			return
 		}
 
-		// Set API key ID in context
 		c.Set("api_key_id", key.ID)
+		c.Set("user_id", key.UserID)
 		c.Next()
 	}
 }

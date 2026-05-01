@@ -261,25 +261,30 @@ func (r *PostgresAPIKeyRepository) IncrementUsage(ctx context.Context, apiKeyID 
 	return err
 }
 
-func (r *PostgresLinkRepository) GetLinkByID(id string) (models.Link, error) {
+func (r *PostgresLinkRepository) GetLinkByIDForUser(id, userID string) (models.Link, error) {
 	var link models.Link
+	var uid sql.NullString
 	query := `
-	SELECT id, short_code, long_url, is_active, clicks, created_at
-	FROM links WHERE id = $1
-`
-	err := r.db.QueryRow(query, id).Scan(&link.ID, &link.ShortCode, &link.LongURL, &link.IsActive, &link.Clicks, &link.CreatedAt)
+		SELECT id, user_id, short_code, long_url, is_active, clicks, created_at
+		FROM links WHERE id = $1 AND user_id = $2
+	`
+	err := r.db.QueryRow(query, id, userID).Scan(
+		&link.ID, &uid, &link.ShortCode, &link.LongURL, &link.IsActive, &link.Clicks, &link.CreatedAt,
+	)
 	if err != nil {
 		return models.Link{}, err
 	}
+	link.UserID = uid.String
 	return link, nil
 }
 
-func (r *PostgresLinkRepository) ListLinks(limit, offset int) ([]models.Link, error) {
+func (r *PostgresLinkRepository) ListLinksForUser(userID string, limit, offset int) ([]models.Link, error) {
 	query := `
-	SELECT id, short_code, long_url, is_active, clicks, created_at
-	FROM links ORDER BY created_at DESC LIMIT $1 OFFSET $2
-`
-	rows, err := r.db.Query(query, limit, offset)
+		SELECT id, user_id, short_code, long_url, is_active, clicks, created_at
+		FROM links WHERE user_id = $1
+		ORDER BY created_at DESC LIMIT $2 OFFSET $3
+	`
+	rows, err := r.db.Query(query, userID, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -288,22 +293,44 @@ func (r *PostgresLinkRepository) ListLinks(limit, offset int) ([]models.Link, er
 	var links []models.Link
 	for rows.Next() {
 		var link models.Link
-		if err := rows.Scan(&link.ID, &link.ShortCode, &link.LongURL, &link.IsActive, &link.Clicks, &link.CreatedAt); err != nil {
+		var uid sql.NullString
+		if err := rows.Scan(
+			&link.ID, &uid, &link.ShortCode, &link.LongURL, &link.IsActive, &link.Clicks, &link.CreatedAt,
+		); err != nil {
 			return nil, err
 		}
+		link.UserID = uid.String
 		links = append(links, link)
 	}
 	return links, rows.Err()
 }
 
-func (r *PostgresLinkRepository) UpdateLinkStatus(id string, isActive bool) error {
-	_, err := r.db.Exec("UPDATE links SET is_active = $1 WHERE id = $2", isActive, id)
-	return err
+func (r *PostgresLinkRepository) UpdateLinkStatusForUser(id, userID string, isActive bool) error {
+	res, err := r.db.Exec(
+		"UPDATE links SET is_active = $1 WHERE id = $2 AND user_id = $3",
+		isActive, id, userID,
+	)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }
 
-func (r *PostgresLinkRepository) DeleteLink(id string) error {
-	_, err := r.db.Exec("DELETE FROM links WHERE id = $1", id)
-	return err
+func (r *PostgresLinkRepository) DeleteLinkForUser(id, userID string) error {
+	res, err := r.db.Exec(
+		"DELETE FROM links WHERE id = $1 AND user_id = $2",
+		id, userID,
+	)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }
 
 func (r *PostgresLinkRepository) IncrementClicks(shortCode string) error {

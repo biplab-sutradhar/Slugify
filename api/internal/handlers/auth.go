@@ -1,34 +1,85 @@
-package middleware
+package handlers
 
 import (
+	"errors"
 	"net/http"
 
-	"github.com/biplab-sutradhar/slugify/api/internal/auth"
-	"github.com/biplab-sutradhar/slugify/api/internal/db"
+	"github.com/biplab-sutradhar/slugify/api/internal/models"
+	"github.com/biplab-sutradhar/slugify/api/internal/services"
 	"github.com/gin-gonic/gin"
 )
 
-func AuthMiddleware(apiKeyRepo db.APIKeyRepository) gin.HandlerFunc {
+func Register(svc *services.AuthService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		apiKey := c.GetHeader("X-API-Key")
-		if apiKey == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "API key required"})
+		var req models.RegisterRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-
-		if err := auth.ValidateAPIKey(apiKey); err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid API key format"})
+		resp, err := svc.Register(c, req)
+		if err != nil {
+			if errors.Is(err, services.ErrEmailTaken) {
+				c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
+		c.JSON(http.StatusCreated, resp)
+	}
+}
 
-		key, err := apiKeyRepo.GetAPIKeyByKey(c, apiKey)
-		if err != nil || !key.IsActive {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid or inactive API key"})
+func Login(svc *services.AuthService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req models.LoginRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
+		resp, err := svc.Login(c, req)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, resp)
+	}
+}
 
-		c.Set("api_key_id", key.ID)
-		c.Set("user_id", key.UserID)
-		c.Next()
+func Me(svc *services.AuthService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID := c.GetString("user_id")
+		if userID == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "user not identified"})
+			return
+		}
+		user, err := svc.Me(c, userID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, user)
+	}
+}
+
+func MintAPIKey(svc *services.AuthService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID := c.GetString("user_id")
+		if userID == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "user not identified"})
+			return
+		}
+		var req struct {
+			Name string `json:"name"`
+		}
+		_ = c.ShouldBindJSON(&req)
+		if req.Name == "" {
+			req.Name = "Default"
+		}
+		key, err := svc.MintAPIKey(c, userID, req.Name)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusCreated, gin.H{"api_key": key})
 	}
 }
