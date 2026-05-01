@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import {
   deleteLink,
   listLinks,
+  normalizeUrl,
   patchLinkActive,
   shorten,
   type Link,
@@ -43,14 +44,25 @@ export default function LinksPage() {
     void refresh();
   }, [refresh]);
 
-  const onShorten = async (e: React.FormEvent) => {
+    const onShorten = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiKey) return;
     setError(null);
     setShortUrl(null);
+
+    if (!apiKey) {
+      setError("Your API key is still being provisioned. Try again in a moment.");
+      return;
+    }
+
+    const normalized = normalizeUrl(longUrl);
+    if (!normalized) {
+      setError("That doesn't look like a valid URL.");
+      return;
+    }
+
     setLoading(true);
     try {
-      const r = await shorten(longUrl.trim(), apiKey);
+      const r = await shorten(normalized, apiKey);
       setShortUrl(r.short_url);
       setLongUrl("");
       await refresh();
@@ -70,13 +82,16 @@ export default function LinksPage() {
         className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center"
       >
         <Input
-          type="url"
+          type="text"
+          inputMode="url"
+          autoComplete="off"
+          spellCheck={false}
           required
-          placeholder="<https://example.com/very/long>"
+          placeholder="example.com or <https://example.com/path>"
           value={longUrl}
           onChange={(e) => setLongUrl(e.target.value)}
         />
-        <Button type="submit" disabled={loading || !apiKey}>
+        <Button type="submit" disabled={loading}>
           {loading ? "Working…" : "Shorten"}
         </Button>
       </form>

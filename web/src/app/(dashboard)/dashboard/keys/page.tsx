@@ -1,21 +1,21 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useCallback, useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   type ApiKey,
   createMyKey,
   deleteMyKey,
   listMyKeys,
-} from "@/lib/auth-api";
-import { useAuth } from "@/lib/auth-context";
+} from '@/lib/auth-api';
+import { useAuth } from '@/lib/auth-context';
 
 export default function KeysPage() {
-  const { token, apiKey } = useAuth();
+  const { token, apiKey, setApiKey } = useAuth();
   const [keys, setKeys] = useState<ApiKey[]>([]);
-  const [name, setName] = useState("");
-  const [scope, setScope] = useState("default");
+  const [name, setName] = useState('');
+  const [scope, setScope] = useState('default');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [justCreated, setJustCreated] = useState<ApiKey | null>(null);
@@ -27,7 +27,7 @@ export default function KeysPage() {
     try {
       setKeys(await listMyKeys(token));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load keys");
+      setError(e instanceof Error ? e.message : 'Failed to load keys');
     } finally {
       setLoading(false);
     }
@@ -40,7 +40,7 @@ export default function KeysPage() {
   const onCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token) {
-      setError("Not signed in.");
+      setError('Not signed in.');
       return;
     }
     setError(null);
@@ -48,14 +48,17 @@ export default function KeysPage() {
     setLoading(true);
     try {
       const created = await createMyKey(token, {
-        name: name.trim() || "API key",
-        scope: scope.trim() || "default",
+        name: name.trim() || 'API key',
+        scope: scope.trim() || 'default',
       });
       setJustCreated(created);
-      setName("");
+      setName('');
+      if (!apiKey) {
+        setApiKey(created.key);
+      }
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Create failed");
+      setError(err instanceof Error ? err.message : 'Create failed');
     } finally {
       setLoading(false);
     }
@@ -63,12 +66,12 @@ export default function KeysPage() {
 
   const onRevoke = async (id: string) => {
     if (!token) return;
-    if (!confirm("Revoke this key? This cannot be undone.")) return;
+    if (!confirm('Revoke this key? This cannot be undone.')) return;
     try {
       await deleteMyKey(token, id);
       await refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Revoke failed");
+      setError(e instanceof Error ? e.message : 'Revoke failed');
     }
   };
 
@@ -115,7 +118,7 @@ export default function KeysPage() {
           />
         </div>
         <Button type="submit" disabled={loading || !token}>
-          {loading ? "Working…" : "Create key"}
+          {loading ? 'Working…' : 'Create key'}
         </Button>
       </form>
 
@@ -169,19 +172,17 @@ export default function KeysPage() {
               {keys.map((k) => (
                 <tr key={k.id} className="border-t border-[var(--border)]">
                   <td className="max-w-[14rem] truncate px-3 py-2">
-                    {k.name || "—"}
+                    {k.name || '—'}
                   </td>
                   <td className="px-3 py-2">{k.scope}</td>
                   <td className="px-3 py-2 tabular-nums">{k.usage}</td>
                   <td className="px-3 py-2">
                     <span
                       className={
-                        k.is_active
-                          ? "text-[var(--success)]"
-                          : "text-muted"
+                        k.is_active ? 'text-[var(--success)]' : 'text-muted'
                       }
                     >
-                      {k.is_active ? "Active" : "Off"}
+                      {k.is_active ? 'Active' : 'Off'}
                     </span>
                   </td>
                   <td className="px-3 py-2 text-right">

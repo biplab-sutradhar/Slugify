@@ -84,13 +84,26 @@ func main() {
 	// Public redirect route (no auth needed)
 	r.GET("/:shortCode", handlers.ResolveLink(linkService))
 
-	// Public API routes to create API keys (no auth needed)
-	publicAPI := r.Group("/api")
+	// Public auth endpoints (signup / login)
+	authPublic := r.Group("/auth")
 	{
-		publicAPI.POST("/keys", handlers.CreateAPIKey(apiKeyService))
+		authPublic.POST("/register", handlers.Register(authService))
+		authPublic.POST("/login", handlers.Login(authService))
 	}
 
-	// Protected API routes
+	// JWT-protected user endpoints (the dashboard talks to these)
+	authProtected := r.Group("/auth")
+	authProtected.Use(middleware.JWTAuthMiddleware(cfg.JWTSecret))
+	{
+		authProtected.GET("/me", handlers.Me(authService))
+		authProtected.POST("/api-key", handlers.MintAPIKey(authService))
+
+		authProtected.GET("/keys", handlers.ListAPIKeys(apiKeyService))
+		authProtected.POST("/keys", handlers.CreateAPIKey(apiKeyService))
+		authProtected.DELETE("/keys/:id", handlers.DeleteAPIKey(apiKeyService))
+	}
+
+	// API-key-protected routes (for external integrations using X-API-Key)
 	api := r.Group("/api")
 	api.Use(middleware.AuthMiddleware(apiKeyRepo))
 	api.Use(middleware.RateLimitMiddleware(redisClient.GetRawClient()))
@@ -101,14 +114,8 @@ func main() {
 		api.PATCH("/links/:id", handlers.UpdateLink(linkService))
 		api.DELETE("/links/:id", handlers.DeleteLink(linkService))
 		api.GET("/keys", handlers.ListAPIKeys(apiKeyService))
-		// api.POST("/keys", handlers.CreateAPIKey(apiKeyService))
+		api.POST("/keys", handlers.CreateAPIKey(apiKeyService))
 		api.DELETE("/keys/:id", handlers.DeleteAPIKey(apiKeyService))
-	}
-
-	auth := r.Group("/auth")
-	{
-		auth.POST("/register", handlers.Register(authService))
-		auth.POST("/login", handlers.Login(authService))
 	}
 
 	if err := r.Run(":" + cfg.Port); err != nil {

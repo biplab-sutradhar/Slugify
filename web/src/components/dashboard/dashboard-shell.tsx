@@ -15,17 +15,25 @@ const items = [
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, loading, logout, ensureApiKey, apiKey } = useAuth();
+  const {
+    user,
+    loading,
+    logout,
+    ensureApiKey,
+    apiKey,
+    provisioning,
+    provisioningError,
+  } = useAuth();
 
   useEffect(() => {
     if (!loading && !user) router.replace("/login");
   }, [loading, user, router]);
 
   useEffect(() => {
-    if (user && !apiKey) {
-      ensureApiKey().catch(() => {});
+    if (user && !apiKey && !provisioning && !provisioningError) {
+      void ensureApiKey();
     }
-  }, [user, apiKey, ensureApiKey]);
+  }, [user, apiKey, provisioning, provisioningError, ensureApiKey]);
 
   if (loading || !user) {
     return (
@@ -82,7 +90,27 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <main className="bg-[var(--background)]">{children}</main>
+      <div className="flex min-w-0 flex-col">
+        {provisioningError && (
+          <div className="border-b border-red-500/30 bg-red-500/10 px-6 py-3 text-sm text-red-700 dark:text-red-300">
+            <span className="font-medium">Couldn't load your API key:</span>{" "}
+            {provisioningError}{" "}
+            <button
+              type="button"
+              onClick={() => void ensureApiKey()}
+              className="ml-2 underline underline-offset-4"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+        {!apiKey && provisioning && !provisioningError && (
+          <div className="border-b border-[var(--border)] bg-[var(--surface)] px-6 py-3 text-sm text-muted">
+            Provisioning your API key…
+          </div>
+        )}
+        <main className="flex-1 bg-[var(--background)]">{children}</main>
+      </div>
     </div>
   );
 }

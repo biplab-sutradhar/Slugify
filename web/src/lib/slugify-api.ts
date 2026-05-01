@@ -7,6 +7,16 @@ export type Link = {
   created_at: string;
 };
 
+export type ApiKey = {
+  id: string;
+  key: string;
+  name: string;
+  scope: string;
+  is_active: boolean;
+  created_at: string;
+  usage: number;
+};
+
 const BASE = "/backend";
 
 function headers(apiKey: string): HeadersInit {
@@ -22,6 +32,39 @@ async function parseError(res: Response): Promise<string> {
     return j.error ?? res.statusText;
   } catch {
     return res.statusText;
+  }
+}
+
+/**
+ * Cleans up sloppy URL input and returns a normalized URL string,
+ * or null if the input doesn't represent a real URL.
+ *
+ * Handles:
+ *  - leading/trailing whitespace
+ *  - wrapping <…>, "…", '…', `…`
+ *  - missing scheme (defaults to https://)
+ *  - zero-width / BOM characters from rich-text copy-paste
+ */
+export function normalizeUrl(input: string): string | null {
+  if (!input) return null;
+
+  let s = input.trim();
+  // Strip invisible characters that often come from copy-paste
+  s = s.replace(/[\\u200B-\\u200D\\uFEFF]/g, "");
+  // Strip wrapping quotes / brackets one layer at a time
+  s = s.replace(/^[<"'`(]+/, "").replace(/[>"'`)]+$/, "");
+  s = s.trim();
+
+  if (!s) return null;
+
+  const withScheme = /^https?:\/\//i.test(s) ? s : `https://${s}`;
+
+  try {
+    const u = new URL(withScheme);
+    if (!u.hostname || !u.hostname.includes(".")) return null;
+    return u.toString();
+  } catch {
+    return null;
   }
 }
 
@@ -70,16 +113,6 @@ export async function deleteLink(id: string, apiKey: string) {
   if (!res.ok) throw new Error(await parseError(res));
 }
 
-export type ApiKey = {
-  id: string;
-  key: string;
-  name: string;
-  scope: string;
-  is_active: boolean;
-  created_at: string;
-  usage: number;
-};
-
 export async function listApiKeys(apiKey: string) {
   const res = await fetch(`${BASE}/keys`, { headers: headers(apiKey) });
   if (!res.ok) throw new Error(await parseError(res));
@@ -95,7 +128,6 @@ export async function deleteApiKey(id: string, apiKey: string) {
   if (!res.ok) throw new Error(await parseError(res));
 }
 
-// Works only if POST /api/keys is enabled in the Gin router.
 export async function createApiKey(
   body: { name: string; scope: string },
   apiKey: string
