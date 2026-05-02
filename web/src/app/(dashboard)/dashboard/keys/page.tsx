@@ -131,7 +131,7 @@ export default function KeysPage() {
       {justCreated && (
         <div className="mt-8 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
           <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
-            Save this key now — you'll only see the full value here.
+            Save this key now — you&apos;ll only see the full value here.
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-3">
             <code className="break-all font-mono text-sm">

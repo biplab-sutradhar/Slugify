@@ -93,7 +93,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       <div className="flex min-w-0 flex-col">
         {provisioningError && (
           <div className="border-b border-red-500/30 bg-red-500/10 px-6 py-3 text-sm text-red-700 dark:text-red-300">
-            <span className="font-medium">Couldn't load your API key:</span>{" "}
+            <span className="font-medium">Couldn&apos;t load your API key:</span>{" "}
             {provisioningError}{" "}
             <button
               type="button"
