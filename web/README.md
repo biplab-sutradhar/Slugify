@@ -1,36 +1,112 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Slugify
 
-## Getting Started
+[![CI](<https://github.com/your-username/slugify/actions/workflows/ci.yml/badge.svg>)](<https://github.com/your-username/slugify/actions/workflows/ci.yml>)
+![Go](<https://img.shields.io/badge/Go-1.25-00ADD8?logo=go&logoColor=white>)
+![Next.js](<https://img.shields.io/badge/Next.js-15-000?logo=nextdotjs>)
+![Postgres](<https://img.shields.io/badge/Postgres-16-336791?logo=postgresql&logoColor=white>)
+![Redis](<https://img.shields.io/badge/Redis-7-DC382D?logo=redis&logoColor=white>)
+![License](<https://img.shields.io/badge/license-MIT-blue.svg>)
 
-First, run the development server:
+A self-hostable URL shortener with a polished admin dashboard. Built end-to-end
+to demonstrate full-stack engineering: Go services, Postgres + Redis, JWT auth,
+multi-tenant data isolation, a Next.js dashboard, Docker, and CI.
+
+> **Note:** this is a learning / portfolio project. The architecture is real,
+> but performance numbers come from local benchmarks — not production traffic.
+
+## Features
+
+**Core**
+- Short links with sub-10 ms Redis cache hits and Postgres fallback
+- Custom **base62 ID generator** backed by a range-based ticket server
+- **Per-user data isolation** — every link and API key is scoped to its owner
+- **Two coexisting auth schemes**:
+  - JWT (HS256, bcrypt) for the dashboard
+  - API keys (`X-API-Key`) for external integrations
+- **Token-bucket rate limiting** per API key (Redis)
+
+**Dashboard**
+- Modern Next.js 15 + Tailwind v4 UI
+- Landing → signup → dashboard with auto-redirect when authenticated
+- Pages: Overview, Links, API keys, Analytics
+- Auto-provisioned API key on signup, manual mint on demand
+
+**Operations**
+- Multi-stage Docker builds (~15 MB API image, distroless)
+- `docker compose` for the full stack
+- GitHub Actions CI: `gofmt` / `vet` / `go test` + `next lint` + `next build` + Docker image build
+
+## Tech stack
+
+| Layer | Stack |
+| --- | --- |
+| API | Go 1.25, Gin, `golang-migrate`, `golang-jwt/v5`, `bcrypt` |
+| Storage | PostgreSQL 16, Redis 7 |
+| Frontend | Next.js 15 (App Router), React 19, Tailwind CSS v4, TypeScript |
+| Infra | Docker, docker-compose, GitHub Actions |
+| Tests | Go `testing` + table-driven unit tests with hand-rolled fakes |
+
+## Quick start
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+docker compose up --build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- API → <http://localhost:9000> (`GET /health` for a sanity check)
+- Web → <http://localhost:3000>
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+For non-Docker setup and every other command you'll ever need, see
+[`docs/run-command.md`](docs/run-command.md).
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Repository layout
 
-## Learn More
+```
+.
+├── api/                       # Go backend
+│   ├── cmd/server/            # main entry point
+│   ├── internal/
+│   │   ├── auth/              # JWT, API-key generation
+│   │   ├── cache/             # Redis client + Cache interface
+│   │   ├── config/            # env loading
+│   │   ├── db/                # Postgres repositories + interfaces
+│   │   ├── handlers/          # Gin HTTP handlers
+│   │   ├── idgen/             # base62 + ticket server
+│   │   ├── middleware/        # X-API-Key + JWT middlewares
+│   │   ├── models/            # domain types
+│   │   └── services/          # business logic, no HTTP / DB code
+│   ├── migrations/            # golang-migrate SQL files
+│   └── Dockerfile
+│
+├── web/                       # Next.js frontend
+│   ├── src/
+│   │   ├── app/               # App Router pages (route groups)
+│   │   ├── components/        # UI + feature components
+│   │   └── lib/               # API clients + auth context
+│   └── Dockerfile
+│
+├── k8s/                       # Kubernetes manifests (work in progress)
+├── docs/                      # Architecture, API, deployment, commands
+├── docker-compose.yml
+└── .github/workflows/ci.yml
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Documentation
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **[Architecture](docs/architecture.md)** — request flow, ID generation, multi-tenancy, schema
+- **[API Contract](docs/api-contract.md)** — every REST endpoint with auth + payload
+- **[Deployment](docs/deployment.md)** — Docker Compose and Kubernetes
+- **[Run Commands](docs/run-command.md)** — local setup, testing, lint, migrations
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Roadmap
 
-## Deploy on Vercel
+- [ ] Real time-series click events table (currently a counter)
+- [ ] Link expiration (TTL)
+- [ ] OpenAPI / Swagger spec at `/docs`
+- [ ] Graceful shutdown on `SIGTERM`
+- [ ] Mobile sidebar for the dashboard
+- [ ] Helm chart for the Kubernetes setup
+- [ ] Prometheus `/metrics` endpoint
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## License
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+MIT — see [`LICENSE`](LICENSE).
