@@ -1,0 +1,9 @@
+.git
+.gitignore
+*.md
+*.env
+.env*
+performance_tests
+test_db.go
+**/*_test.go
+docs
