@@ -62,7 +62,7 @@ jobs:
 
       - name: Build
         env:
-          BACKEND_URL: <http://localhost:9000>
+          BACKEND_URL: http://localhost:9000
         run: npm run build
 
   docker:
