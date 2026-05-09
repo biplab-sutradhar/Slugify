@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: slugify-api
+  labels:
+    app: slugify-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: slugify-api
+  template:
+    metadata:
+      labels:
+        app: slugify-api
+    spec:
+      containers:
+        - name: api
+          image: slugify-api:dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9000
+          env:
+            - name: PORT
+              value: "9000"
+
+            - name: DATABASE_URL
+              value: "postgres://postgres:mynew@host.docker.internal:5432/urlshortener?sslmode=disable"
+
+            - name: APP_NAME
+              value: "env-api"
+
+            - name: REDIS_URL
+              value: "redis://host.docker.internal:6379"
+
+            - name: DOMAINURL
+              value: "http://localhost:9000"
+
+            - name: JWT_SECRET
+              value: "your-super-secret-key-at-least-32-chars-long"
