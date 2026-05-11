@@ -3,12 +3,12 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: slugify
+      POSTGRES_PASSWORD: mynew
+      POSTGRES_DB: urlshortener
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d slugify"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d urlshortener"]
       interval: 3s
       timeout: 3s
       retries: 20
@@ -30,8 +30,8 @@ services:
       context: ./api
     environment:
       PORT: "9000"
-      APP_NAME: slugify
-      DATABASE_URL: postgres://postgres:postgres@postgres:5432/slugify?sslmode=disable
+      APP_NAME: urlshortener
+      DATABASE_URL: postgres://postgres:mynew@postgres:5432/urlshortener?sslmode=disable
       REDIS_URL: redis://redis:6379
       DOMAINURL: <http://localhost:9000>
       JWT_SECRET: change-me-in-production-please-use-a-long-random-string
