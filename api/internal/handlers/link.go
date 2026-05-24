@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/biplab-sutradhar/slugify/api/internal/dto"
 	"github.com/biplab-sutradhar/slugify/api/internal/models"
 	"github.com/biplab-sutradhar/slugify/api/internal/services"
 	"github.com/gin-gonic/gin"
@@ -19,7 +20,7 @@ func ShortenLink(service *services.LinkService) gin.HandlerFunc {
 			return
 		}
 
-		var req models.ShortenRequest
+		var req dto.ShortenRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON"})
 			return
@@ -38,7 +39,7 @@ func ShortenLink(service *services.LinkService) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusCreated, models.ShortenResponse{
+		c.JSON(http.StatusCreated, dto.ShortenResponse{
 			ShortURL: service.GetDomainURL() + "/" + link.ShortCode,
 		})
 	}
@@ -116,7 +117,7 @@ func UpdateLink(service *services.LinkService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID := c.GetString("user_id")
 		id := c.Param("id")
-		var req models.UpdateLinkRequest
+		var req dto.UpdateLinkRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON"})
 			return

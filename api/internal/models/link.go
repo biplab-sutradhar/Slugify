@@ -11,15 +11,3 @@ type Link struct {
 	Clicks    int64     `json:"clicks" db:"clicks"`
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
 }
-
-type ShortenRequest struct {
-	LongURL string `json:"long_url"`
-}
-
-type ShortenResponse struct {
-	ShortURL string `json:"short_url"`
-}
-
-type UpdateLinkRequest struct {
-	IsActive *bool `json:"is_active"`
-}

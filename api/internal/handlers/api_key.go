@@ -3,7 +3,7 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/biplab-sutradhar/slugify/api/internal/models"
+	"github.com/biplab-sutradhar/slugify/api/internal/dto"
 	"github.com/biplab-sutradhar/slugify/api/internal/services"
 	"github.com/gin-gonic/gin"
 )
@@ -16,7 +16,7 @@ func CreateAPIKey(apiKeyService *services.APIKeyService) gin.HandlerFunc {
 			return
 		}
 
-		var req models.CreateAPIKeyRequest
+		var req dto.CreateAPIKeyRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON"})
 			return
@@ -34,7 +34,7 @@ func CreateAPIKey(apiKeyService *services.APIKeyService) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusCreated, models.APIKeyResponse{
+		c.JSON(http.StatusCreated, dto.APIKeyResponse{
 			ID:        key.ID,
 			Key:       key.Key,
 			Name:      key.Name,
@@ -60,9 +60,9 @@ func ListAPIKeys(apiKeyService *services.APIKeyService) gin.HandlerFunc {
 			return
 		}
 
-		resp := make([]models.APIKeyResponse, 0, len(keys))
+		resp := make([]dto.APIKeyResponse, 0, len(keys))
 		for _, k := range keys {
-			resp = append(resp, models.APIKeyResponse{
+			resp = append(resp, dto.APIKeyResponse{
 				ID:        k.ID,
 				Key:       k.Key,
 				Name:      k.Name,
