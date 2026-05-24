@@ -6,6 +6,7 @@ import (
 
 	"github.com/biplab-sutradhar/slugify/api/internal/auth"
 	"github.com/biplab-sutradhar/slugify/api/internal/db"
+	"github.com/biplab-sutradhar/slugify/api/internal/dto"
 	"github.com/biplab-sutradhar/slugify/api/internal/models"
 	"github.com/google/uuid"
 )
@@ -21,7 +22,7 @@ func NewAPIKeyService(repo db.APIKeyRepository) *APIKeyService {
 }
 
 // CreateAPIKey creates a new API key for a user.
-func (s *APIKeyService) CreateAPIKey(ctx context.Context, userID string, req models.CreateAPIKeyRequest) (models.APIKey, error) {
+func (s *APIKeyService) CreateAPIKey(ctx context.Context, userID string, req dto.CreateAPIKeyRequest) (models.APIKey, error) {
 	key, err := auth.GenerateAPIKey()
 	if err != nil {
 		return models.APIKey{}, err
